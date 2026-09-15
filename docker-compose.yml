@@ -1,0 +1,117 @@
+version: "3.9"
+
+services:
+  # ─── PostgreSQL ──────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: sdn
+      POSTGRES_PASSWORD: sdn_password
+      POSTGRES_DB: sdn_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sdn"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Redis ───────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Backend ─────────────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgresql+asyncpg://sdn:sdn_password@postgres:5432/sdn_db
+      REDIS_URL: redis://redis:6379/0
+      RYU_HOST: ryu
+      RYU_PORT: 8080
+      API_HOST: 0.0.0.0
+      API_PORT: 8000
+      DEBUG: "false"
+      LOG_LEVEL: INFO
+      OLLAMA_HOST: http://ollama:11434
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - models_data:/app/models
+      - logs_data:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # ─── Frontend ────────────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+  # ─── Ryu Controller ──────────────────────────────────────────────────────────
+  ryu:
+    image: osrg/ryu
+    command: >
+      ryu-manager
+      ryu.app.rest_topology
+      ryu.app.ws_topology
+      ryu.app.ofctl_rest
+      ryu.app.rest_conf_switch
+      --observe-links
+      --wsapi-port 8081
+    ports:
+      - "6653:6653"   # OpenFlow
+      - "8080:8080"   # REST API
+      - "8081:8081"   # WebSocket API
+    networks:
+      - default
+
+  # ─── Ollama (AI Copilot) ─────────────────────────────────────────────────────
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    profiles:
+      - ai
+
+volumes:
+  postgres_data:
+  models_data:
+  logs_data:
+  ollama_data:
+
+networks:
+  default:
+    driver: bridge

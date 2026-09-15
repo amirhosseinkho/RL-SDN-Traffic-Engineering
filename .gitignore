@@ -1,0 +1,59 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+coverage.xml
+*.log
+
+# Node
+node_modules/
+dist/
+.env.local
+.env.production
+
+# Environment
+.env
+*.env
+
+# ML Models (large files)
+models/*.pt
+models/checkpoints/*.pt
+# Keep directory structure
+!models/.gitkeep
+!models/checkpoints/.gitkeep
+
+# Logs
+logs/
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+.docker/
+
+# Experiment results (keep configs)
+results/
+experiments/results/
+
+# Database
+*.db
+*.sqlite
