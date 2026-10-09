@@ -24,7 +24,7 @@ from app.database.schemas import TopologyConfig
 from app.rl.agents.dqn_agent import DQNAgent
 from app.rl.agents.ppo_agent import PPOAgent
 from app.rl.environment import SDNRoutingEnv
-from app.simulation.evaluator import Evaluator
+from app.simulation.evaluator import Evaluator, RandomRouter
 from app.topology.generator import TopologyGenerator
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
@@ -88,14 +88,22 @@ async def main() -> None:
 
     results = await evaluator.compare_all(agents, num_episodes=args.episodes)
     improvements = evaluator.compute_improvements(results)
+    named = {agent_type.value: result for agent_type, result in results.items()}
+
+    # Random path per flow: shows how much of an agent's reward any non-shortest routing gets.
+    # (Passed as a learned-agent type only so evaluate_agent calls its select_action.)
+    logger.info("Evaluating random baseline...")
+    named["random"] = await evaluator.evaluate_agent(
+        AgentType.DQN, RandomRouter(env_probe, seed=args.seed), args.episodes
+    )
 
     # Print table
     print("\n" + "=" * 70)
-    print(f"{'Agent':<20} {'Reward':>10} {'Latency(ms)':>12} {'Throughput%':>12} {'Loss%':>8}")
+    print(f"{'Agent':<20} {'Reward':>10} {'Latency(ms)':>12} {'LinkUtil%':>12} {'Loss%':>8}")
     print("=" * 70)
-    for agent_type, result in results.items():
+    for name, result in named.items():
         print(
-            f"{agent_type.value:<20} "
+            f"{name:<20} "
             f"{result.avg_reward:>10.4f} "
             f"{result.avg_latency_ms:>12.2f} "
             f"{result.avg_throughput_pct:>12.1f} "
@@ -103,10 +111,10 @@ async def main() -> None:
         )
     print("=" * 70)
 
-    print("\nImprovements over Shortest Path:")
+    print("\nChange vs Shortest Path:")
     for agent, impr in improvements.items():
-        print(f"  {agent}: latency -{impr['latency_reduction_pct']:.1f}% | "
-              f"throughput +{impr['throughput_gain_pct']:.1f}%")
+        print(f"  {agent}: latency {-impr['latency_reduction_pct']:+.1f}% | "
+              f"link utilization {impr['throughput_gain_pct']:+.1f} points")
 
     # Save JSON
     args.output.parent.mkdir(parents=True, exist_ok=True)
@@ -115,14 +123,14 @@ async def main() -> None:
         "episodes": args.episodes,
         "seed": args.seed,
         "results": {
-            agent_type.value: {
+            name: {
                 "avg_reward": result.avg_reward,
                 "avg_latency_ms": result.avg_latency_ms,
                 "avg_throughput_pct": result.avg_throughput_pct,
                 "avg_packet_loss": result.avg_packet_loss,
                 "convergence_time_s": result.convergence_time_s,
             }
-            for agent_type, result in results.items()
+            for name, result in named.items()
         },
         "improvements": improvements,
     }

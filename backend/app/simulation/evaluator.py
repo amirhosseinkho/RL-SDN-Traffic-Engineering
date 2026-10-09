@@ -88,6 +88,17 @@ class ECMPRouter:
         return np.array(actions, dtype=np.int64)
 
 
+class RandomRouter:
+    """Sanity baseline: a uniformly random path index for every flow."""
+
+    def __init__(self, env: SDNRoutingEnv, seed: int = 0) -> None:
+        self.nvec = env.action_space.nvec
+        self._rng = np.random.default_rng(seed)
+
+    def select_action(self, obs: np.ndarray, deterministic: bool = False) -> np.ndarray:
+        return self._rng.integers(0, self.nvec)
+
+
 class Evaluator:
     """Runs comparative evaluation across routing algorithms."""
 
@@ -119,6 +130,10 @@ class Evaluator:
             ep_steps = 0
             convergence_step = None
             reward_history: list[float] = []
+            # Per-step network metrics, averaged over the episode below
+            utils: list[float] = []
+            latencies: list[float] = []
+            losses: list[float] = []
 
             while True:
                 if agent_type in (AgentType.SHORTEST_PATH, AgentType.ECMP):
@@ -135,6 +150,9 @@ class Evaluator:
                 ep_reward += reward
                 ep_steps += 1
                 reward_history.append(reward)
+                utils.append(info.get("avg_utilization", 0.0))
+                latencies.append(info.get("avg_latency_ms", 0.0))
+                losses.append(info.get("avg_packet_loss", 0.0))
 
                 # Detect convergence: reward stabilizes within 5% of rolling mean
                 if len(reward_history) >= 20 and convergence_step is None:
@@ -149,9 +167,9 @@ class Evaluator:
                 agent_type=agent_type,
                 episode=ep,
                 total_reward=ep_reward,
-                avg_utilization=info.get("avg_utilization", 0.0),
-                avg_latency_ms=info.get("avg_latency_ms", 0.0),
-                avg_packet_loss=info.get("avg_packet_loss", 0.0),
+                avg_utilization=float(np.mean(utils)) if utils else 0.0,
+                avg_latency_ms=float(np.mean(latencies)) if latencies else 0.0,
+                avg_packet_loss=float(np.mean(losses)) if losses else 0.0,
                 steps=ep_steps,
                 convergence_step=convergence_step,
             )
