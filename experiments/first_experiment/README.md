@@ -1,5 +1,11 @@
 # First Experiment: DQN and PPO vs Baselines (simulation)
 
+> **Superseded.** This experiment used the original utilization-based reward and a traffic model in
+> which demand grew without bound during each episode (from about 0.5 Gbps to about 1 Tbps over 200
+> steps, found afterwards), so the network was saturated for most of every episode. Both were fixed
+> in commit `572c111`. See the [second experiment](../second_experiment/README.md). This page is
+> kept as a record. To reproduce it, check out commit `e241345`.
+
 Run on 2026-10-09 with commit `e241345` (branch `cleanup/honest-readme`). Everything below happens
 inside `SDNRoutingEnv`, the NetworkX simulation. No real or emulated network is involved.
 

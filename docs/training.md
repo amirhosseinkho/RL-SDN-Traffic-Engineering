@@ -1,8 +1,8 @@
 # Training Guide
 
-> This guide documents how training is set up in the code, not what works best. The
-> [first experiment](../experiments/first_experiment/README.md) showed that with the current reward,
-> trained agents do no better than random routing, so no hyperparameter advice is given yet.
+> This guide documents how training is set up in the code, not what works best. Only default
+> hyperparameters have been run so far (see the
+> [second experiment](../experiments/second_experiment/README.md)), so no tuning advice is given yet.
 > See [../STATUS.md](../STATUS.md) for what has been verified.
 
 ## Agents
@@ -44,18 +44,20 @@ clip_range = 0.2
 checkpoint_freq = 100_000
 ```
 
-## Reward Weights
+## Reward
 
-The reward weights are set through the `reward_weights` argument of `SDNRoutingEnv`. The default is:
-
-```python
-reward_weights = {"throughput": 1.0, "latency": 0.3, "congestion": 0.5, "packet_loss": 0.4}
+```
+reward = delivered_ratio - latency_weight · (mean_stretch - 1)
 ```
 
-`throughput_gain` grows with average link utilization. Routing over longer paths puts the same
-traffic on more links and raises it, so with these weights random routing earns about as much reward
-as the trained agents and far more than shortest path, even though shortest path has lower latency
-and loss (see the first experiment). Other weightings have not been studied.
+`delivered_ratio` is the share of total demand that gets through. `mean_stretch` is the
+demand-weighted ratio of each flow's path latency to its uncongested shortest-path latency (see
+[architecture.md](architecture.md#reward-function)). `latency_weight` is an argument of
+`SDNRoutingEnv` (default `0.1`). Other values have not been studied.
+
+The previous reward, built from average link utilization, rewarded detours that did not deliver more
+traffic. Random routing scored as high as the trained agents under it (see the
+[first experiment](../experiments/first_experiment/README.md)).
 
 ## Practical Notes
 
@@ -71,13 +73,17 @@ These are observations from the runs so far, not tuning advice.
 4. DQN makes no gradient updates before step 10,000 (`learning_starts`), so shorter runs leave the
    network untrained.
 5. PPO trains on episodes of `n_steps` (2,048) steps, while evaluation uses 200-step episodes.
-6. For `fat_tree` with `k=4`, precomputing the K shortest paths between all host pairs took about
-   8 minutes before training started.
+6. Precomputing the K shortest paths for `fat_tree` with `k=4` takes well under a second (0.34 s
+   measured). It took about 8 minutes before the path generator was cut off after K paths.
 7. No TensorBoard logging is implemented. Training progress is printed to the console log.
+8. Both agents use CUDA automatically when PyTorch sees a GPU. On a GTX 1650 Ti (Windows, PyTorch
+   2.11 + CUDA 12.8), 20,000 DQN steps took 153 s on the GPU vs 149 s on the CPU, and 10,240 PPO steps
+   took 881 s vs 1080 s. Other jobs shared the CPU during both measurements. The networks are small
+   and stepping the simulation dominates, so the GPU helps PPO a little and DQN not at all.
 
 ## Comparing Agents
 
-After training, compare the agents with the shortest-path, ECMP and random baselines, using the
+After training, compare the agents with the shortest-path, ECMP, random and least-loaded baselines, using the
 same topology arguments as in training and an evaluation seed that differs from the training seeds:
 
 ```bash
@@ -89,4 +95,4 @@ python experiments/scripts/evaluate.py \
     --output results/comparison.json
 ```
 
-To repeat the first experiment (3 seeds per agent), run `bash experiments/first_experiment/run.sh`.
+To repeat the second experiment (3 seeds per agent), run `bash experiments/second_experiment/run.sh`.

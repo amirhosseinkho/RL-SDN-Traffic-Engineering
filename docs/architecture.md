@@ -81,21 +81,32 @@ K=4 by default (k-shortest paths via NetworkX).
 ### Reward Function
 
 ```
-reward = w₁ · throughput_gain
-       - w₂ · latency_penalty
-       - w₃ · congestion_penalty
-       - w₄ · packet_loss_penalty
+reward = delivered_ratio - latency_weight · (mean_stretch - 1)        (latency_weight = 0.1)
 
-where:
-  throughput_gain     = avg_util × (1 - max(0, max_util - 0.9))
-  latency_penalty     = min(1, avg_latency_ms / 50)
-  congestion_penalty  = congestion_ratio   (share of links above 0.8 utilization)
-  packet_loss_penalty = min(1, avg_loss / 5)
+where, for the current routing:
+  offered(l)       = total demand of the flows crossing switch link l (either direction)
+  share(l)         = min(1, capacity(l) / offered(l))
+  delivered(f)     = demand(f) · min over links l on f's path of share(l)
+  delivered_ratio  = Σ delivered(f) / Σ demand(f)
+  stretch(f)       = path latency of f (incl. queueing) / latency of f's shortest path without queueing
+  mean_stretch     = demand-weighted mean of stretch(f)
 
-(see SDNRoutingEnv._compute_reward in backend/app/rl/environment.py)
-
-Default weights: w₁=1.0, w₂=0.3, w₃=0.5, w₄=0.4
+(see SDNRoutingEnv._compute_flow_outcomes and _compute_reward in backend/app/rl/environment.py)
 ```
+
+With `latency_weight = 0.1`, ten percentage points of delivered demand are worth doubling the
+average flow latency. Host access links are not modelled.
+
+This replaced an earlier reward built from average link utilization. That reward paid for spreading
+traffic over more links, so random routing scored as high as the trained agents (see the
+[first experiment](../experiments/first_experiment/README.md)).
+
+### Traffic Model
+
+At reset, `min(max_flows, traffic_intensity × number of host pairs)` flows are drawn between random
+host pairs: 20% elephants (50–200 Mbps), the rest mice (1–20 Mbps). Each step, a flow's demand moves
+back toward its base demand (the deviation shrinks by 20%) with Gaussian noise; with probability
+0.05 it bursts to 1.5–3× the base, and with probability 0.02 it drops to 0.3× the base.
 
 ## Data Flow
 
@@ -106,7 +117,7 @@ RL training and evaluation (verified with the CLI scripts):
 2. SDNRoutingEnv generates synthetic flows and simulates link state
 3. Agent selects one of K paths per flow → env updates utilization → reward computed
 4. Training loop → model saved to models/ → loaded by evaluate.py
-5. Evaluator compares agents with shortest-path, ECMP and random baselines in the same simulation
+5. Evaluator compares agents with shortest-path, ECMP, random and least-loaded baselines in the same simulation
 ```
 
 Monitoring path:

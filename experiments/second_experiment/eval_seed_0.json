@@ -1,0 +1,95 @@
+{
+  "topology": {
+    "topology_type": "spine_leaf",
+    "num_switches": 6,
+    "num_hosts": 8,
+    "bandwidth": 100.0,
+    "latency": 5.0,
+    "loss": 0.0,
+    "k": 4,
+    "depth": 2,
+    "fanout": 2,
+    "num_spine": 2,
+    "num_leaf": 4,
+    "custom_data": null,
+    "name": "eval-topology"
+  },
+  "episodes": 20,
+  "seed": 1000,
+  "results": {
+    "shortest_path": {
+      "avg_reward": 79.93777866321177,
+      "avg_delivered_pct": 63.06048176374544,
+      "avg_flow_latency_ms": 32.267796483443064,
+      "avg_latency_ms": 10.359573361640834,
+      "avg_throughput_pct": 40.48213115641152,
+      "avg_packet_loss": 0.2991444086818275,
+      "convergence_time_s": 83.0
+    },
+    "ecmp": {
+      "avg_reward": 31.524071877228977,
+      "avg_delivered_pct": 55.96378177235317,
+      "avg_flow_latency_ms": 49.37794988504219,
+      "avg_latency_ms": 12.537270435476636,
+      "avg_throughput_pct": 56.122416002452944,
+      "avg_packet_loss": 0.42968661346646153,
+      "convergence_time_s": null
+    },
+    "dqn": {
+      "avg_reward": 125.82932963226779,
+      "avg_delivered_pct": 81.35967190276284,
+      "avg_flow_latency_ms": 27.62121113793246,
+      "avg_latency_ms": 11.393162991412872,
+      "avg_throughput_pct": 55.284790998612095,
+      "avg_packet_loss": 0.2772901883081954,
+      "convergence_time_s": 60.0
+    },
+    "ppo": {
+      "avg_reward": 107.6579667728657,
+      "avg_delivered_pct": 75.6167025675509,
+      "avg_flow_latency_ms": 30.963923232421564,
+      "avg_latency_ms": 11.63959022468281,
+      "avg_throughput_pct": 56.64250963258747,
+      "avg_packet_loss": 0.30212346390465283,
+      "convergence_time_s": 67.0
+    },
+    "random": {
+      "avg_reward": 58.58537465178347,
+      "avg_delivered_pct": 65.54305862028934,
+      "avg_flow_latency_ms": 45.426575345701096,
+      "avg_latency_ms": 13.457630948659135,
+      "avg_throughput_pct": 67.6658881596939,
+      "avg_packet_loss": 0.43022532146427006,
+      "convergence_time_s": 20.0
+    },
+    "least_loaded": {
+      "avg_reward": 144.2827315206844,
+      "avg_delivered_pct": 88.42432057167615,
+      "avg_flow_latency_ms": 25.459158862637466,
+      "avg_latency_ms": 11.52486717124734,
+      "avg_throughput_pct": 59.29144847553125,
+      "avg_packet_loss": 0.2601573395295264,
+      "convergence_time_s": 43.833333333333336
+    }
+  },
+  "improvements": {
+    "ecmp": {
+      "latency_reduction_pct": -21.02,
+      "throughput_gain_pct": 15.64,
+      "packet_loss_reduction": -0.1305,
+      "reward_improvement": -48.4137
+    },
+    "dqn": {
+      "latency_reduction_pct": -9.98,
+      "throughput_gain_pct": 14.8,
+      "packet_loss_reduction": 0.0219,
+      "reward_improvement": 45.8916
+    },
+    "ppo": {
+      "latency_reduction_pct": -12.36,
+      "throughput_gain_pct": 16.16,
+      "packet_loss_reduction": -0.003,
+      "reward_improvement": 27.7202
+    }
+  }
+}

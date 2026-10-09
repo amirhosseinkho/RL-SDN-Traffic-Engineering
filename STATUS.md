@@ -21,8 +21,9 @@ Legend: ✅ works · ⚠️ partial · ❌ broken / missing · ⏸ not verified
   topology, live metrics, starting a training run, viewing training progress and evaluation.
 - The RL environment is a NetworkX-based simulation. There is no Mininet integration, and no
   routing decision is pushed to switches.
-- A first experiment in the simulation has been run (see [Experiments](#experiments)). Its main
-  finding is that the current reward function does not separate the trained agents from random routing.
+- Two experiments have been run in the simulation (see [Experiments](#experiments)). With the
+  current per-flow reward, DQN and PPO beat shortest-path, ECMP and random routing but not a simple
+  least-loaded heuristic.
 
 ## Checks
 
@@ -34,13 +35,13 @@ Legend: ✅ works · ⚠️ partial · ❌ broken / missing · ⏸ not verified
 | Module imports | Import every module under `backend/app` | `pkgutil.walk_packages` over `app` | ✅ 30/31 | Only `app.controller.openflow_handler` fails (`No module named 'ryu'`). It is a Ryu app meant to run under `ryu-manager`, not inside the backend. |
 | Lint | Same command as CI | `ruff check app/ --select=E,F,W,I --ignore=E501` | ✅ | |
 | Server | Start the API | `uvicorn app.main:app` | ✅ | `/health` and `/api/v1/docs` return 200. Tested with `DATABASE_URL=sqlite+aiosqlite:///...`; PostgreSQL was not used. |
-| Unit tests | | `pytest tests/unit` | ✅ 41/41 | |
+| Unit tests | | `pytest tests/unit` | ✅ 44/44 | Includes tests for the reward (detours without congestion lower it; spreading load off an overloaded link raises it) and for bounded demand. |
 | Integration tests | API tests on in-memory SQLite | `pytest tests/integration` | ✅ 10/10 | |
-| Coverage gate | `pytest tests` with `pytest.ini` | `pytest tests` | ✅ | 61.10% total, gate is 60%. |
+| Coverage gate | `pytest tests` with `pytest.ini` | `pytest tests` | ✅ | 61.09% total, gate is 60%. |
 | API by hand | Topology create/activate/delete, metrics summary/links/congestion, flows, training start + progress, evaluation + comparison, reports (JSON/CSV/PDF), copilot query + history | `curl` against the running server | ✅ | Reports returned `application/json`, `text/csv` and `application/pdf`. Without Ollama, the copilot answers from its keyword fallback and labels the answer `rule-based`. |
 | Training WebSocket | `/ws/training/{session_id}` | not used | ⏸ | The dashboard reads training progress from `GET /rl/sessions/{id}`. |
 | Training scripts | Train with seeds and an output directory | `train_dqn.py` / `train_ppo.py --seed N --output-dir DIR` | ✅ | Same seed gives identical weights, a different seed gives different weights (checked on DQN). |
-| Evaluation script | DQN, PPO, shortest path, ECMP, random | `evaluate.py --seed N` | ✅ | A model can only be evaluated on the topology it was trained on (the observation size depends on the topology). |
+| Evaluation script | DQN, PPO, shortest path, ECMP, random, least-loaded | `evaluate.py --seed N` | ✅ | A model can only be evaluated on the topology it was trained on (the observation size depends on the topology). |
 
 ### Frontend
 
@@ -66,9 +67,9 @@ Legend: ✅ works · ⚠️ partial · ❌ broken / missing · ⏸ not verified
 
 ## Known issues
 
-1. The reward function rewards high average link utilization. Longer paths put the same traffic on
-   more links and raise it, so random routing scores almost as well as the trained agents, while
-   latency and loss get worse than with shortest-path routing (see [Experiments](#experiments)).
+1. The agents' observation does not include which hosts a flow connects or which links its candidate
+   paths use, so they cannot see what the least-loaded heuristic uses. This is a likely reason they
+   fall short of it.
 2. `EvaluationResult.avg_throughput_mbps` and `TrainingEpisode.avg_throughput_mbps` hold average
    link utilization in percent, not Mbps. The dashboard labels it correctly, but the column names are wrong.
 3. During PPO training an episode is `n_steps` long (2048 by default), while evaluation uses
@@ -80,4 +81,5 @@ Legend: ✅ works · ⚠️ partial · ❌ broken / missing · ⏸ not verified
 
 | Experiment | Status | Result |
 |---|---|---|
-| [First experiment](experiments/first_experiment/README.md): DQN and PPO (3 seeds × 300,000 steps) vs shortest path, ECMP and random routing, spine-leaf 6×8, simulation only | ✅ run | DQN and PPO reach the same reward as random routing (42.97 ± 0.90 and 42.87 ± 0.27 vs 42.58). Shortest path has the lowest latency (12.11 ms) and loss (0.461%). The reward function needs to be redesigned before agent performance means anything. |
+| [Second experiment](experiments/second_experiment/README.md): per-flow reward, stationary traffic; DQN and PPO (3 seeds × 300,000 steps) vs shortest path, ECMP, random and least-loaded; spine-leaf 6×8; simulation only | ✅ run | Delivered demand: DQN 80.8% ± 0.7%, PPO 75.1% ± 1.9%, shortest path 63.1%, random 65.5%, ECMP 56.0%, least-loaded 88.4%. |
+| [First experiment](experiments/first_experiment/README.md): original utilization reward | superseded | The agents scored the same as random routing. The reward and a traffic bug (demand growing without bound) were fixed afterwards. |

@@ -5,9 +5,10 @@ software-defined network, plus a FastAPI backend and React dashboard around them
 
 > 🚧 **Work in progress.**
 > The simulated environment, the agents, the backend and the dashboard run, and the backend tests
-> pass. The [first experiment](experiments/first_experiment/README.md) found that the trained agents
-> do no better than random routing on the current reward, which needs to be redesigned. There is no
-> integration with a live network (Ryu controller, OpenFlow switches, Mininet) yet.
+> pass. In the [second experiment](experiments/second_experiment/README.md) (simulation only), DQN and
+> PPO deliver more traffic than shortest-path, ECMP and random routing, but less than a simple
+> least-loaded heuristic. There is no integration with a live network (Ryu controller, OpenFlow
+> switches, Mininet) yet.
 > See [STATUS.md](STATUS.md) for exactly what was checked.
 
 [![CI](https://github.com/amirhosseinkho/RL-SDN-Traffic-Engineering/actions/workflows/ci.yml/badge.svg)](https://github.com/amirhosseinkho/RL-SDN-Traffic-Engineering/actions)
@@ -22,9 +23,10 @@ software-defined network, plus a FastAPI backend and React dashboard around them
 2. `SDNRoutingEnv` (a Gymnasium environment) simulates link utilization, queueing, latency and
    packet loss on that graph, from a randomly generated and randomly perturbed set of flows.
 3. At each step, a DQN or PPO agent picks one of the K shortest paths for every flow, and the
-   environment returns a reward built from link utilization, latency, congestion and loss.
-4. An evaluator compares trained agents with shortest-path, ECMP and random routing in the same
-   simulation, on the same traffic.
+   environment returns a reward based on how much of the demand is delivered and how long the
+   flows' paths take.
+4. An evaluator compares trained agents with shortest-path, ECMP, random and least-loaded routing
+   in the same simulation, on the same traffic.
 5. A FastAPI backend and a React dashboard let you create topologies, watch simulated link metrics,
    start training runs and compare agents.
 
@@ -44,7 +46,7 @@ graph TB
         ENV[SDNRoutingEnv<br/>simulated links + traffic]
         DQN[DQN agent]
         PPO[PPO agent]
-        EVAL[Evaluator<br/>vs Shortest Path / ECMP / Random]
+        EVAL[Evaluator<br/>vs Shortest Path / ECMP / Random / Least-loaded]
         SCRIPTS[experiments/scripts]
     end
 
@@ -111,7 +113,7 @@ RL-SDN-Traffic-Engineering/
 │   │   │       └── ppo_agent.py    # PPO (clipped objective, GAE-Lambda)
 │   │   ├── simulation/
 │   │   │   ├── traffic_generator.py # Traffic patterns (standalone, not used by the env)
-│   │   │   └── evaluator.py         # Agents vs shortest path / ECMP / random
+│   │   │   └── evaluator.py         # Agents vs shortest path / ECMP / random / least-loaded
 │   │   └── topology/
 │   │       └── generator.py        # Linear, tree, fat-tree, spine-leaf, custom JSON
 │   ├── tests/
@@ -128,7 +130,8 @@ RL-SDN-Traffic-Engineering/
 │       ├── store/                  # Zustand store
 │       └── types/
 ├── experiments/
-│   ├── first_experiment/           # run.sh, aggregate.py, results and write-up
+│   ├── first_experiment/           # old reward (superseded): run.sh, results, write-up
+│   ├── second_experiment/          # per-flow reward: run.sh, results, write-up
 │   └── scripts/
 │       ├── train_dqn.py
 │       ├── train_ppo.py
@@ -153,16 +156,19 @@ Exercised by the tests, by running the scripts, or by using the dashboard (see [
   - *State*: per-link utilization, latency, packet loss and queue occupancy; per-flow demand and
     active flag; global average/max utilization and congestion ratio.
   - *Action*: multi-discrete, one of the K shortest paths (K = 4 by default) per flow.
-  - *Reward*: `w_t·throughput_gain − w_l·latency − w_c·congestion − w_p·packet_loss`, where
-    `throughput_gain` is based on average link utilization.
-  - Traffic is synthetic: about 20% elephant flows, random demand perturbations and bursts.
+  - *Reward*: `delivered_ratio − 0.1·(mean_stretch − 1)`: the share of total demand delivered
+    (overloaded links are shared in proportion to demand), minus a penalty for flow latency above the
+    uncongested shortest-path latency. See [docs/architecture.md](docs/architecture.md#reward-function).
+  - Traffic is synthetic: about 20% elephant flows; demand fluctuates and bursts around each flow's
+    base demand.
 - **DQN agent**: dueling network, Double-DQN targets, uniform experience replay, epsilon-greedy
   exploration, checkpointing.
 - **PPO agent**: shared trunk with one policy head per flow, value head, GAE-Lambda advantages,
   clipped surrogate objective.
 - **Reproducible runs**: `--seed` seeds Python, NumPy, PyTorch and the simulated traffic;
   `--output-dir` chooses where models are saved.
-- **Evaluation** against shortest-path, ECMP and random routing, written to JSON.
+- **Evaluation** against shortest-path, ECMP, random and least-loaded routing, reporting reward,
+  delivered demand, flow latency and link utilization, written to JSON.
 - **FastAPI backend**: REST routes for topologies, metrics, flows, training sessions, evaluation,
   reports (JSON, CSV, PDF) and the copilot; a WebSocket stream for live metrics.
 - **React dashboard**: Topology, Live Metrics, RL Training, Training Progress and Evaluation pages
@@ -180,7 +186,8 @@ Exercised by the tests, by running the scripts, or by using the dashboard (see [
 - **Docker images** and `docker compose up`.
 
 ### Planned
-- A reward function based on per-flow outcomes (see the [first experiment](experiments/first_experiment/README.md)).
+- Per-flow, per-path features in the observation, so the agents can see what the least-loaded
+  heuristic uses (see the [second experiment](experiments/second_experiment/README.md)).
 - Installing the agents' routing decisions on switches (the `install_path` helpers exist but are
   not called).
 - Emulating the network in Mininet and training/evaluating against it.
@@ -240,7 +247,7 @@ python experiments/scripts/train_ppo.py \
     --topology spine_leaf --num-switches 6 --num-hosts 8 \
     --timesteps 300000 --seed 0 --output-dir models/seed_0
 
-# Compare with shortest path, ECMP and random routing on the same topology
+# Compare with shortest path, ECMP, random and least-loaded routing on the same topology
 python experiments/scripts/evaluate.py \
     --topology spine_leaf --num-switches 6 --num-hosts 8 \
     --dqn-model models/seed_0/dqn_model.pt \
@@ -250,30 +257,34 @@ python experiments/scripts/evaluate.py \
 ```
 
 A model can only be evaluated on the topology it was trained on, because the observation size
-depends on the topology. For `fat_tree` with `k=4`, precomputing the paths took about 8 minutes
-before training started.
+depends on the topology.
 
 ---
 
 ## Results
 
-One experiment so far, in the simulation only: [experiments/first_experiment](experiments/first_experiment/README.md).
+All results so far are from the simulation, not a real or emulated network.
 
-Spine-leaf (6 switches, 8 hosts), 300,000 training steps, 3 seeds per agent, 20 evaluation episodes,
-mean ± std across seeds:
+**[Second experiment](experiments/second_experiment/README.md)** (current reward). Spine-leaf
+(6 switches, 8 hosts), 300,000 training steps, 3 seeds per agent, 20 evaluation episodes on traffic
+not seen in training, mean ± std across seeds:
 
-| Agent | Episode reward | Avg link latency (ms) | Avg link utilization (%) | Avg link loss (%) |
-|---|---|---|---|---|
-| Shortest path | 18.22 ± 0.00 | 12.11 ± 0.00 | 48.5 ± 0.0 | 0.461 ± 0.000 |
-| ECMP | 27.11 ± 0.00 | 14.76 ± 0.00 | 66.5 ± 0.0 | 0.633 ± 0.000 |
-| Random | 42.58 ± 0.00 | 17.82 ± 0.00 | 89.2 ± 0.0 | 0.810 ± 0.000 |
-| DQN | 42.97 ± 0.90 | 16.99 ± 1.00 | 84.8 ± 5.2 | 0.745 ± 0.082 |
-| PPO | 42.87 ± 0.27 | 18.03 ± 0.05 | 90.5 ± 0.3 | 0.825 ± 0.005 |
+| Agent | Episode reward | Delivered demand (%) | Mean flow latency (ms) |
+|---|---|---|---|
+| Shortest path | 79.9 ± 0.0 | 63.1 ± 0.0 | 32.27 ± 0.00 |
+| ECMP | 31.5 ± 0.0 | 56.0 ± 0.0 | 49.38 ± 0.00 |
+| Random | 58.6 ± 0.0 | 65.5 ± 0.0 | 45.43 ± 0.00 |
+| Least-loaded (heuristic) | 144.3 ± 0.0 | 88.4 ± 0.0 | 25.46 ± 0.00 |
+| DQN | 124.6 ± 1.7 | 80.8 ± 0.7 | 27.71 ± 0.11 |
+| PPO | 106.9 ± 9.2 | 75.1 ± 1.9 | 30.89 ± 2.70 |
 
-DQN and PPO earn the same reward as random routing, and shortest path has the lowest latency and
-loss. The reward favors high average link utilization, which longer paths increase without delivering
-more traffic. This is a negative result about the current reward, which will be redesigned before
-further experiments.
+Both agents beat shortest path, ECMP and random routing on every seed; neither reaches the
+least-loaded heuristic, which knows each flow's candidate paths while the agents' observation does not.
+
+**[First experiment](experiments/first_experiment/README.md)** (superseded). With the original
+utilization-based reward, and a traffic model in which demand grew without bound during each
+episode, the trained agents scored no better than random routing. That led to the current reward
+and traffic model.
 
 ---
 
@@ -325,7 +336,7 @@ cd backend
 pytest tests/
 ```
 
-51 tests (41 unit, 10 integration on in-memory SQLite) with a 60% coverage gate. CI also runs
+54 tests (44 unit, 10 integration on in-memory SQLite) with a 60% coverage gate. CI also runs
 `ruff` on the backend and `npm run lint`, `npm run typecheck` and `npm run build` on the frontend.
 
 ---
