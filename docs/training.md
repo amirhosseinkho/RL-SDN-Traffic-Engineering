@@ -1,36 +1,38 @@
 # Training Guide
 
-## Choosing an Agent
+> No full training runs have been done yet, so this guide documents how training is set up in the
+> code, not what works best. Hyperparameter advice will be added once experiments exist.
+> See [../STATUS.md](../STATUS.md) for what has been verified.
 
-| Agent | Strengths | When to Use |
-|-------|-----------|-------------|
-| **DQN** | Sample efficient, good with sparse rewards | Small topologies, quick experiments |
-| **PPO** | Stable, works well with continuous action spaces | Large topologies, long training runs |
+## Agents
 
-## Hyperparameter Tuning
+| Agent | Implementation (`backend/app/rl/agents/`) |
+|-------|-------------------------------------------|
+| **DQN** | Dueling network, Double-DQN targets, uniform replay buffer, epsilon-greedy exploration. Q-values for the multi-discrete action are split into one slice per flow. |
+| **PPO** | Shared trunk, one categorical policy head per flow, value head, GAE-Lambda advantages, clipped surrogate objective. |
 
-### DQN Recommendations
+Both agents act on the same multi-discrete action space: for every flow, one of `max_paths`
+(default 4) precomputed shortest paths.
+
+## Default Hyperparameters
+
+These are the defaults in the code and the CLI scripts. They have not been tuned.
+
+### DQN (`dqn_agent.py`, `trainer.py`, `train_dqn.py`)
 
 ```python
-# Small topology (≤ 8 switches)
 learning_rate = 1e-4
-buffer_size = 50_000
+buffer_size = 100_000
 batch_size = 64
 gamma = 0.99
-epsilon_decay = 20_000
-
-# Large topology (> 16 switches)
-learning_rate = 5e-5
-buffer_size = 200_000
-batch_size = 128
-gamma = 0.995
-epsilon_decay = 100_000
+epsilon_decay = 50_000      # steps from 1.0 down to 0.05
+learning_starts = 10_000    # no gradient updates before this step
+checkpoint_freq = 50_000
 ```
 
-### PPO Recommendations
+### PPO (`ppo_agent.py`, `trainer.py`, `train_ppo.py`)
 
 ```python
-# Standard (works for most topologies)
 learning_rate = 3e-4
 n_steps = 2048
 batch_size = 64
@@ -38,50 +40,43 @@ n_epochs = 10
 gamma = 0.99
 gae_lambda = 0.95
 clip_range = 0.2
+checkpoint_freq = 100_000
 ```
 
-## Reward Shaping
+## Reward Weights
 
-Adjust `reward_weights` in `SDNRoutingEnv` to change agent behavior:
+The reward weights are set through the `reward_weights` argument of `SDNRoutingEnv`. The default is:
 
 ```python
-# Latency-focused (minimize delay)
-reward_weights = {"throughput": 0.5, "latency": 1.0, "congestion": 0.3, "packet_loss": 0.2}
-
-# Throughput-focused (maximize flow completion)
-reward_weights = {"throughput": 1.5, "latency": 0.1, "congestion": 0.3, "packet_loss": 0.1}
-
-# Balanced (default)
 reward_weights = {"throughput": 1.0, "latency": 0.3, "congestion": 0.5, "packet_loss": 0.4}
 ```
 
-## Training Tips
+The effect of other weightings has not been studied yet.
 
-1. **Start with small topologies** (linear 4 switches) to verify the agent learns
-2. **Monitor epsilon decay** — if it decays too fast, the agent won't explore
-3. **Watch for reward plateau** — if reward doesn't improve after 100k steps, adjust learning rate
-4. **Use TensorBoard** — training metrics are logged to `logs/` directory
-5. **Save checkpoints** — models are checkpointed every 50k steps
+## Practical Notes
 
-## Convergence Indicators
+These are observations from short runs, not tuning advice.
 
-- **DQN**: Reward should start improving after ~20k steps (after learning starts)
-- **PPO**: Reward should improve steadily from the first update
-- **Both**: Average latency should decrease and throughput increase as training progresses
+1. A model can only be evaluated on the topology it was trained on: the observation size depends
+   on the number of links. Loading a `fat_tree` model into a `spine_leaf` evaluation fails with a
+   size mismatch.
+2. Final models are always written to `models/dqn_model.pt` and `models/ppo_model.pt`, and checkpoints
+   to `models/checkpoints/`. The `--output-dir` flag of `train_dqn.py` is currently ignored.
+3. For `fat_tree` with `k=4`, precomputing the K shortest paths between all host pairs took about
+   8 minutes before training started.
+4. No TensorBoard logging is implemented. Training progress is printed to the console log.
 
-## Comparing Results
+## Comparing Agents
 
-After training, run evaluation to compare agents:
+After training, compare the agents with the shortest-path and ECMP baselines, using the same
+topology arguments as in training:
 
 ```bash
 python experiments/scripts/evaluate.py \
+    --topology spine_leaf --num-switches 6 --num-hosts 8 \
     --dqn-model models/dqn_model.pt \
-    --ppo-model models/ppo_model.pt \
     --episodes 50 \
     --output results/comparison.json
 ```
 
-Expected improvements over shortest-path baseline:
-- Latency: 15-40% reduction
-- Throughput: 20-50% improvement  
-- Packet loss: 50-80% reduction
+There are no results yet.

@@ -2,7 +2,11 @@
 
 ## Overview
 
-The RL-SDN Traffic Engineering platform is a layered system:
+> Status: only the RL core (topology generator, simulated environment, DQN/PPO agents, evaluator)
+> has been verified. The backend currently fails to start, and the Ryu path is untested. There is
+> no Mininet integration. See [../STATUS.md](../STATUS.md).
+
+The intended design is layered:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -20,15 +24,15 @@ The RL-SDN Traffic Engineering platform is a layered system:
               │
    ┌──────────▼──────────┐    ┌──────────────────────────┐
    │   RL Environment     │    │    Ryu SDN Controller    │
-   │  (Gymnasium)         │    │   (OpenFlow 1.3)         │
-   │  DQN / PPO Agents   │    │   REST API + WebSocket   │
-   └──────────────────────┘    └────────────┬─────────────┘
-                                             │ OpenFlow
-                                ┌────────────▼─────────────┐
-                                │    Mininet Network       │
-                                │  (Virtual switches/hosts)│
-                                └──────────────────────────┘
+   │  (Gymnasium,         │    │   (OpenFlow 1.3)         │
+   │   NetworkX sim)      │    │   REST API               │
+   │  DQN / PPO Agents   │    │   [not verified]         │
+   └──────────────────────┘    └──────────────────────────┘
 ```
+
+The RL environment is self-contained: it simulates link load, queueing, latency and loss on a
+NetworkX graph and does not read from or write to Ryu. Connecting the agents to a live network
+(installing their paths on switches and emulating the network in Mininet) is planned, not implemented.
 
 ## Component Design
 
@@ -84,23 +88,35 @@ reward = w₁ · throughput_gain
        - w₄ · packet_loss_penalty
 
 where:
-  throughput_gain   = avg_util × (1 - max(0, max_util - 0.9))
-  latency_penalty   = normalized_latency × w₂
-  congestion_penalty = congestion_ratio × w₃
-  packet_loss_penalty = normalized_loss × w₄
+  throughput_gain     = avg_util × (1 - max(0, max_util - 0.9))
+  latency_penalty     = min(1, avg_latency_ms / 50)
+  congestion_penalty  = congestion_ratio   (share of links above 0.8 utilization)
+  packet_loss_penalty = min(1, avg_loss / 5)
+
+(see SDNRoutingEnv._compute_reward in backend/app/rl/environment.py)
 
 Default weights: w₁=1.0, w₂=0.3, w₃=0.5, w₄=0.4
 ```
 
 ## Data Flow
 
+RL training and evaluation (verified with the CLI scripts):
+
 ```
-1. Traffic arrives → Mininet → Ryu learns topology via LLDP
-2. Ryu REST API → MetricsCollector polls port stats every 1s
-3. MetricsCollector → broadcasts via WebSocket to dashboard
-4. RL agent observes state from SDNRoutingEnv
-5. Agent selects routing paths → env applies routing → reward computed
-6. Training loop → model saved → can be loaded for evaluation
+1. TopologyGenerator builds the graph
+2. SDNRoutingEnv generates synthetic flows and simulates link state
+3. Agent selects one of K paths per flow → env updates utilization → reward computed
+4. Training loop → model saved to models/ → loaded by evaluate.py
+5. Evaluator compares agents with shortest-path and ECMP baselines in the same simulation
+```
+
+Monitoring path (code exists, not verified):
+
+```
+1. MetricsCollector polls Ryu's REST API for switches, links and port stats
+   (interval: metrics_collection_interval = 1.0 s in config.py)
+2. If Ryu is unreachable, it reads link state from the simulated environment instead
+3. Snapshots are broadcast to the dashboard over WebSocket
 ```
 
 ## Database Schema
