@@ -2,7 +2,7 @@
 
 An AI-powered Software Defined Networking platform that uses **Reinforcement Learning** to optimize routing decisions and traffic engineering in a Software Defined Network.
 
-[![CI](https://github.com/your-username/rl-sdn-traffic-engineering/actions/workflows/ci.yml/badge.svg)](https://github.com/your-username/rl-sdn-traffic-engineering/actions)
+[![CI](https://github.com/amirhosseinkho/RL-SDN-Traffic-Engineering/actions/workflows/ci.yml/badge.svg)](https://github.com/amirhosseinkho/RL-SDN-Traffic-Engineering/actions)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.6-blue.svg)](https://www.typescriptlang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -186,8 +186,8 @@ Compares: **DQN vs PPO vs Shortest Path vs ECMP**
 
 ```bash
 # Clone the repo
-git clone https://github.com/your-username/rl-sdn-traffic-engineering
-cd rl-sdn-traffic-engineering
+git clone https://github.com/amirhosseinkho/RL-SDN-Traffic-Engineering.git
+cd RL-SDN-Traffic-Engineering
 
 # Start the full stack
 docker compose up -d
@@ -349,12 +349,6 @@ pytest --cov=app --cov-report=html
 
 ---
 
-## Screenshots
-
-> Add screenshots of your running dashboard here.
-
----
-
 ## License
 
 MIT License — see [LICENSE](LICENSE)
@@ -368,8 +362,8 @@ If you use this project in research, please cite:
 ```bibtex
 @software{rl_sdn_traffic_engineering,
   title  = {RL-SDN Traffic Engineering},
-  author = {Your Name},
-  year   = {2025},
-  url    = {https://github.com/your-username/rl-sdn-traffic-engineering}
+  author = {Amirhossein Khoshbakht},
+  year   = {2026},
+  url    = {https://github.com/amirhosseinkho/RL-SDN-Traffic-Engineering}
 }
 ```
