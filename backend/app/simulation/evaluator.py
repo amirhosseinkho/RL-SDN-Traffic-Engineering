@@ -25,6 +25,8 @@ class EvalEpisodeResult:
     avg_packet_loss: float
     steps: int
     convergence_step: int | None = None
+    delivered_pct: float = 0.0  # share of total demand delivered, %
+    avg_flow_latency_ms: float = 0.0  # demand-weighted path latency of the flows
 
 
 @dataclass
@@ -47,6 +49,14 @@ class EvalResult:
     @property
     def avg_packet_loss(self) -> float:
         return float(np.mean([e.avg_packet_loss for e in self.episodes])) if self.episodes else 0.0
+
+    @property
+    def avg_delivered_pct(self) -> float:
+        return float(np.mean([e.delivered_pct for e in self.episodes])) if self.episodes else 0.0
+
+    @property
+    def avg_flow_latency_ms(self) -> float:
+        return float(np.mean([e.avg_flow_latency_ms for e in self.episodes])) if self.episodes else 0.0
 
     @property
     def convergence_time_s(self) -> float | None:
@@ -99,6 +109,39 @@ class RandomRouter:
         return self._rng.integers(0, self.nvec)
 
 
+class LeastLoadedRouter:
+    """Heuristic baseline: route flows one by one, largest first, each on the candidate path
+    whose most loaded link would be least loaded after adding it (ties: shorter path)."""
+
+    def __init__(self, env: SDNRoutingEnv) -> None:
+        self.env = env
+
+    def select_action(self, obs: np.ndarray, deterministic: bool = False) -> np.ndarray:
+        env = self.env
+        actions = np.zeros(env.max_flows, dtype=np.int64)
+        load: dict[frozenset[str], float] = {}
+        flows = list(enumerate(env.sim_state.flow_demands))[: env.max_flows]
+        for i, flow in sorted(flows, key=lambda f: -f[1].demand_mbps):
+            paths = env._get_paths(flow.src_host, flow.dst_host)
+            if not paths:
+                continue
+            best_idx, best_cost = 0, None
+            for idx, path in enumerate(paths):
+                hops = env._switch_hops(path)
+                worst = max(
+                    ((load.get(frozenset(h), 0.0) + flow.demand_mbps) / env.graph[h[0]][h[1]].get("bandwidth", 100.0)
+                     for h in hops),
+                    default=0.0,
+                )
+                cost = (worst, len(hops))
+                if best_cost is None or cost < best_cost:
+                    best_idx, best_cost = idx, cost
+            actions[i] = best_idx
+            for h in env._switch_hops(paths[best_idx]):
+                load[frozenset(h)] = load.get(frozenset(h), 0.0) + flow.demand_mbps
+        return actions
+
+
 class Evaluator:
     """Runs comparative evaluation across routing algorithms."""
 
@@ -123,6 +166,9 @@ class Evaluator:
             router = ECMPRouter(env)
         else:
             router = agent
+            # Heuristic routers read the simulation state; point them at this episode's env
+            if isinstance(router, LeastLoadedRouter):
+                router.env = env
 
         for ep in range(num_episodes):
             obs, _ = env.reset()
@@ -134,6 +180,8 @@ class Evaluator:
             utils: list[float] = []
             latencies: list[float] = []
             losses: list[float] = []
+            delivered: list[float] = []
+            flow_latencies: list[float] = []
 
             while True:
                 if agent_type in (AgentType.SHORTEST_PATH, AgentType.ECMP):
@@ -153,6 +201,8 @@ class Evaluator:
                 utils.append(info.get("avg_utilization", 0.0))
                 latencies.append(info.get("avg_latency_ms", 0.0))
                 losses.append(info.get("avg_packet_loss", 0.0))
+                delivered.append(info.get("delivered_ratio", 0.0))
+                flow_latencies.append(info.get("mean_path_latency_ms", 0.0))
 
                 # Detect convergence: reward stabilizes within 5% of rolling mean
                 if len(reward_history) >= 20 and convergence_step is None:
@@ -172,6 +222,8 @@ class Evaluator:
                 avg_packet_loss=float(np.mean(losses)) if losses else 0.0,
                 steps=ep_steps,
                 convergence_step=convergence_step,
+                delivered_pct=float(np.mean(delivered)) * 100.0 if delivered else 0.0,
+                avg_flow_latency_ms=float(np.mean(flow_latencies)) if flow_latencies else 0.0,
             )
             result.episodes.append(ep_result)
             await asyncio.sleep(0)

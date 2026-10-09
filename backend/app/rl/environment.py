@@ -1,7 +1,9 @@
 """SDN Routing Gymnasium environment for RL training."""
 from __future__ import annotations
 
+from collections import defaultdict
 from dataclasses import dataclass, field
+from itertools import islice
 from typing import Any, Optional
 
 import gymnasium as gym
@@ -39,6 +41,11 @@ class FlowDemand:
     demand_mbps: float
     is_elephant: bool = False
     active_path: Optional[list[str]] = None
+    base_demand_mbps: float = 0.0  # demand fluctuates around this value
+
+    def __post_init__(self) -> None:
+        if self.base_demand_mbps <= 0.0:
+            self.base_demand_mbps = self.demand_mbps
 
 
 @dataclass
@@ -47,6 +54,10 @@ class SimState:
     flow_demands: list[FlowDemand] = field(default_factory=list)
     step_count: int = 0
     episode_reward: float = 0.0
+    # Per-flow outcomes of the current routing (see _compute_flow_outcomes)
+    delivered_ratio: float = 1.0
+    mean_stretch: float = 1.0
+    mean_path_latency_ms: float = 0.0
 
 
 class SDNRoutingEnv(gym.Env):
@@ -62,8 +73,17 @@ class SDNRoutingEnv(gym.Env):
       Discrete - select one of the K shortest paths for each active flow.
       Encoded as a multi-discrete action over num_flows × max_paths.
 
-    Reward:
-      r = throughput_gain - λ₁·latency_penalty - λ₂·congestion_penalty - λ₃·loss_penalty
+    Reward (per step):
+      r = delivered_ratio - latency_weight · (mean_stretch - 1)
+
+      delivered_ratio: fraction of the total demand that is delivered. A link whose offered
+        load exceeds its capacity gives every flow on it capacity/offered of its demand; a flow
+        delivers its demand times the smallest such share on its path.
+      mean_stretch: demand-weighted mean of (path latency incl. queueing) / (latency of the
+        flow's shortest path without queueing). 1.0 = every flow at uncongested shortest-path latency.
+
+      Spreading traffic over extra links is not rewarded by itself; detours pay off only when
+      they deliver more traffic.
     """
 
     metadata = {"render_modes": ["human", "rgb_array"]}
@@ -76,7 +96,7 @@ class SDNRoutingEnv(gym.Env):
         max_steps: int = 200,
         traffic_intensity: float = 0.6,
         congestion_threshold: float = 0.8,
-        reward_weights: dict[str, float] | None = None,
+        latency_weight: float = 0.1,
         seed: int = 42,
     ) -> None:
         super().__init__()
@@ -89,12 +109,9 @@ class SDNRoutingEnv(gym.Env):
         self.traffic_intensity = traffic_intensity
         self.congestion_threshold = congestion_threshold
 
-        self.reward_weights = reward_weights or {
-            "throughput": 1.0,
-            "latency": 0.3,
-            "congestion": 0.5,
-            "packet_loss": 0.4,
-        }
+        # Trade-off between delivered traffic and latency: with 0.1, ten percentage points of
+        # delivered demand are worth doubling the average flow latency.
+        self.latency_weight = latency_weight
 
         # Extract switch and host nodes
         self.switch_nodes = [n for n, d in self.graph.nodes(data=True) if d.get("node_type") == "switch"]
@@ -126,24 +143,42 @@ class SDNRoutingEnv(gym.Env):
     def _precompute_paths(self) -> None:
         """Precompute K shortest switch-level paths between all host pairs."""
         self._paths: dict[tuple[str, str], list[list[str]]] = {}
+        self._base_latency: dict[tuple[str, str], float] = {}
         hosts = self.host_nodes
         for i, src in enumerate(hosts):
             for dst in hosts[i + 1:]:
                 try:
+                    # islice: the generator would otherwise enumerate every simple path
                     paths = list(
-                        nx.shortest_simple_paths(self.graph, src, dst, weight="latency")
-                    )[: self.max_paths]
+                        islice(nx.shortest_simple_paths(self.graph, src, dst, weight="latency"), self.max_paths)
+                    )
                     # Pad to max_paths
                     while len(paths) < self.max_paths:
                         paths.append(paths[0] if paths else [])
                     self._paths[(src, dst)] = paths
                     self._paths[(dst, src)] = [list(reversed(p)) for p in paths]
+                    base = self._switch_latency(paths[0]) if paths else 0.0
+                    self._base_latency[(src, dst)] = base
+                    self._base_latency[(dst, src)] = base
                 except (nx.NetworkXNoPath, nx.NodeNotFound):
                     self._paths[(src, dst)] = []
                     self._paths[(dst, src)] = []
 
     def _get_paths(self, src: str, dst: str) -> list[list[str]]:
         return self._paths.get((src, dst), [])
+
+    def _switch_hops(self, path: list[str]) -> list[tuple[str, str]]:
+        """Switch-to-switch hops of a path (host access links are not modelled)."""
+        return [
+            (u, v)
+            for u, v in zip(path, path[1:])
+            if self.graph.nodes[u].get("node_type") == "switch"
+            and self.graph.nodes[v].get("node_type") == "switch"
+        ]
+
+    def _switch_latency(self, path: list[str]) -> float:
+        """Propagation latency of a path's switch hops, without queueing."""
+        return sum(self.graph[u][v].get("latency", 5.0) for u, v in self._switch_hops(path))
 
     # ─── Reset ───────────────────────────────────────────────────────────
 
@@ -237,6 +272,50 @@ class SDNRoutingEnv(gym.Env):
             base_latency = self.graph.get_edge_data(ls.src, ls.dst, {}).get("latency", 5.0)
             ls.latency_ms = base_latency * (1.0 + ls.queue_occupancy * 3.0)
 
+        self._compute_flow_outcomes()
+
+    def _compute_flow_outcomes(self) -> None:
+        """Delivered traffic and path latency of every flow under the current routing.
+
+        Uses the same link model as the utilization above: a link carries the flows crossing
+        it in either direction. If their total demand exceeds the link's capacity, each gets
+        capacity/offered of its demand, and a flow delivers the smallest share along its path.
+        """
+        flows = self.sim_state.flow_demands
+        offered: dict[frozenset[str], float] = defaultdict(float)
+        hops_per_flow = []
+        for flow in flows:
+            hops = self._switch_hops(flow.active_path or [])
+            hops_per_flow.append(hops)
+            for u, v in hops:
+                offered[frozenset((u, v))] += flow.demand_mbps
+
+        total_demand = delivered = weighted_stretch = weighted_latency = 0.0
+        for flow, hops in zip(flows, hops_per_flow):
+            share = 1.0
+            latency = 0.0
+            for u, v in hops:
+                ls = self.sim_state.link_states[(u, v)]
+                load = offered[frozenset((u, v))]
+                if load > ls.bandwidth:
+                    share = min(share, ls.bandwidth / load)
+                latency += ls.latency_ms
+            base = self._base_latency.get((flow.src_host, flow.dst_host), 0.0)
+            stretch = latency / base if base > 0 else 1.0
+
+            total_demand += flow.demand_mbps
+            delivered += flow.demand_mbps * share
+            weighted_stretch += flow.demand_mbps * stretch
+            weighted_latency += flow.demand_mbps * latency
+
+        state = self.sim_state
+        if total_demand > 0:
+            state.delivered_ratio = delivered / total_demand
+            state.mean_stretch = weighted_stretch / total_demand
+            state.mean_path_latency_ms = weighted_latency / total_demand
+        else:
+            state.delivered_ratio, state.mean_stretch, state.mean_path_latency_ms = 1.0, 1.0, 0.0
+
     # ─── Step ────────────────────────────────────────────────────────────
 
     def step(
@@ -266,58 +345,28 @@ class SDNRoutingEnv(gym.Env):
         return obs, reward, terminated, truncated, info
 
     def _evolve_traffic(self) -> None:
-        """Simulate traffic changes between steps."""
+        """Simulate traffic changes between steps.
+
+        Demand fluctuates around each flow's base demand and returns to it: the deviation
+        shrinks by 20% per step, so a burst halves in about three steps. (Applying bursts
+        multiplicatively without reversion made total demand grow without bound.)
+        """
         for flow in self.sim_state.flow_demands:
-            # Slightly perturb demand
-            delta = float(self._rng.normal(0, flow.demand_mbps * 0.05))
-            flow.demand_mbps = max(0.1, flow.demand_mbps + delta)
-            # Occasionally add/remove burst
+            base = flow.base_demand_mbps
+            noise = float(self._rng.normal(0, base * 0.05))
+            flow.demand_mbps = max(0.1, base + 0.8 * (flow.demand_mbps - base) + noise)
+            # Occasional short burst or drop
             if self._rng.random() < 0.05:
-                flow.demand_mbps *= float(self._rng.uniform(1.5, 3.0))
+                flow.demand_mbps = base * float(self._rng.uniform(1.5, 3.0))
             if self._rng.random() < 0.02:
-                flow.demand_mbps = max(0.1, flow.demand_mbps * 0.3)
+                flow.demand_mbps = max(0.1, base * 0.3)
 
     # ─── Reward ──────────────────────────────────────────────────────────
 
     def _compute_reward(self) -> float:
-        """
-        reward = throughput_gain - λ₁·latency_penalty - λ₂·congestion_penalty - λ₃·loss_penalty
-        """
-        w = self.reward_weights
-        link_states = list(self.sim_state.link_states.values())
-
-        if not link_states:
-            return 0.0
-
-        utilizations = [ls.utilization for ls in link_states]
-        latencies = [ls.latency_ms for ls in link_states]
-        losses = [ls.packet_loss for ls in link_states]
-
-        avg_util = float(np.mean(utilizations))
-        max_util = float(np.max(utilizations))
-        avg_latency = float(np.mean(latencies))
-        avg_loss = float(np.mean(losses))
-        congested = sum(1 for u in utilizations if u > self.congestion_threshold)
-        congestion_ratio = congested / max(len(link_states), 1)
-
-        # Normalize latency (cap at 50ms)
-        norm_latency = min(1.0, avg_latency / 50.0)
-
-        # Throughput gain: reward well-utilized but not over-utilized links
-        throughput_gain = avg_util * (1.0 - max(0.0, max_util - 0.9))
-
-        # Penalties
-        latency_penalty = norm_latency * w["latency"]
-        congestion_penalty = congestion_ratio * w["congestion"]
-        loss_penalty = min(1.0, avg_loss / 5.0) * w["packet_loss"]
-
-        reward = (
-            throughput_gain * w["throughput"]
-            - latency_penalty
-            - congestion_penalty
-            - loss_penalty
-        )
-        return float(reward)
+        """r = delivered_ratio - latency_weight * (mean_stretch - 1); see the class docstring."""
+        state = self.sim_state
+        return float(state.delivered_ratio - self.latency_weight * (state.mean_stretch - 1.0))
 
     # ─── Observation ─────────────────────────────────────────────────────
 
@@ -372,6 +421,9 @@ class SDNRoutingEnv(gym.Env):
             "avg_packet_loss": float(np.mean(losses)) if losses else 0.0,
             "num_congested_links": sum(1 for u in utils if u > self.congestion_threshold),
             "num_active_flows": len(self.sim_state.flow_demands),
+            "delivered_ratio": self.sim_state.delivered_ratio,
+            "mean_stretch": self.sim_state.mean_stretch,
+            "mean_path_latency_ms": self.sim_state.mean_path_latency_ms,
         }
 
     def render(self) -> None:

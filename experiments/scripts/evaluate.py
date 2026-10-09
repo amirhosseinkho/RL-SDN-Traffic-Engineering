@@ -24,7 +24,7 @@ from app.database.schemas import TopologyConfig
 from app.rl.agents.dqn_agent import DQNAgent
 from app.rl.agents.ppo_agent import PPOAgent
 from app.rl.environment import SDNRoutingEnv
-from app.simulation.evaluator import Evaluator, RandomRouter
+from app.simulation.evaluator import Evaluator, LeastLoadedRouter, RandomRouter
 from app.topology.generator import TopologyGenerator
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
@@ -97,19 +97,25 @@ async def main() -> None:
         AgentType.DQN, RandomRouter(env_probe, seed=args.seed), args.episodes
     )
 
+    # Congestion-aware heuristic: what a simple non-learned policy achieves
+    logger.info("Evaluating least-loaded baseline...")
+    probe_env = SDNRoutingEnv(topo_def)
+    named["least_loaded"] = await evaluator.evaluate_agent(AgentType.DQN, LeastLoadedRouter(probe_env), args.episodes)
+
     # Print table
-    print("\n" + "=" * 70)
-    print(f"{'Agent':<20} {'Reward':>10} {'Latency(ms)':>12} {'LinkUtil%':>12} {'Loss%':>8}")
-    print("=" * 70)
+    print("\n" + "=" * 74)
+    print(f"{'Agent':<16} {'Reward':>9} {'Delivered%':>11} {'FlowLat(ms)':>12} {'LinkUtil%':>10} {'Loss%':>8}")
+    print("=" * 74)
     for name, result in named.items():
         print(
-            f"{name:<20} "
-            f"{result.avg_reward:>10.4f} "
-            f"{result.avg_latency_ms:>12.2f} "
-            f"{result.avg_throughput_pct:>12.1f} "
+            f"{name:<16} "
+            f"{result.avg_reward:>9.3f} "
+            f"{result.avg_delivered_pct:>11.2f} "
+            f"{result.avg_flow_latency_ms:>12.2f} "
+            f"{result.avg_throughput_pct:>10.1f} "
             f"{result.avg_packet_loss:>8.4f}"
         )
-    print("=" * 70)
+    print("=" * 74)
 
     print("\nChange vs Shortest Path:")
     for agent, impr in improvements.items():
@@ -125,6 +131,8 @@ async def main() -> None:
         "results": {
             name: {
                 "avg_reward": result.avg_reward,
+                "avg_delivered_pct": result.avg_delivered_pct,
+                "avg_flow_latency_ms": result.avg_flow_latency_ms,
                 "avg_latency_ms": result.avg_latency_ms,
                 "avg_throughput_pct": result.avg_throughput_pct,
                 "avg_packet_loss": result.avg_packet_loss,
