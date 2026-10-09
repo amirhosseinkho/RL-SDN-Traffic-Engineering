@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.routes import metrics as metrics_route
 from app.database.models import Topology
 from app.database.schemas import (
     EdgeResponse,
@@ -96,6 +97,9 @@ async def activate_topology(
     topo.is_active = True
     await db.commit()
     await db.refresh(topo)
+
+    if metrics_route._collector is not None:
+        metrics_route._collector.use_topology(generator.generate(TopologyConfig(**topo.config)))
     return topo
 
 

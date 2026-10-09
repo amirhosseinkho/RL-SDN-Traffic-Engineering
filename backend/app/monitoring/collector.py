@@ -12,6 +12,7 @@ from typing import Any
 from app.config import get_settings
 from app.controller.ryu_controller import RyuControllerClient
 from app.rl.environment import SDNRoutingEnv
+from app.topology.generator import TopologyDefinition
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -154,11 +155,25 @@ class MetricsCollector:
             logger.debug("Ryu metrics unavailable: %s", e)
         return snapshots
 
+    def use_topology(self, topology: TopologyDefinition) -> None:
+        """Simulate this topology when Ryu is unreachable."""
+        env = SDNRoutingEnv(topology)
+        env.reset()
+        self.env = env
+        self.history.clear()
+
     def _collect_from_env(self) -> list[LinkSnapshot]:
-        """Extract metrics directly from the simulation state."""
+        """Advance the simulation one step (shortest-path routing) and read its link state.
+
+        These are simulated values, not measurements from a network.
+        """
         snapshots: list[LinkSnapshot] = []
         if self.env is None:
             return snapshots
+
+        _, _, terminated, truncated, _ = self.env.step(self.env.action_space.nvec * 0)
+        if terminated or truncated:
+            self.env.reset()
 
         for (src, dst), ls in self.env.sim_state.link_states.items():
             src_dpid = self.env.topology.graph.nodes.get(src, {}).get("dpid", 0)

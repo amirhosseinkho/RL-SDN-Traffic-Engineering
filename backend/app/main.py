@@ -48,6 +48,23 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     _collector = MetricsCollector()
     await _collector.start()
 
+    # Without Ryu, live metrics come from a simulation of the active topology
+    try:
+        from sqlalchemy import select
+
+        from app.database.models import Topology
+        from app.database.schemas import TopologyConfig
+        from app.database.session import async_session_factory
+        from app.topology.generator import TopologyGenerator
+
+        async with async_session_factory() as db:
+            result = await db.execute(select(Topology).where(Topology.is_active.is_(True)))
+            active = result.scalars().first()
+        if active:
+            _collector.use_topology(TopologyGenerator().generate(TopologyConfig(**active.config)))
+    except Exception as e:
+        logger.error("Could not load the active topology for metrics: %s", e)
+
     # Wire collector into routes
     from app.api import websocket as ws_module
     from app.api.routes import copilot as copilot_route

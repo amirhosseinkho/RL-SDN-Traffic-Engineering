@@ -46,7 +46,8 @@ Answer questions about the network state clearly and concisely. If the RL agent 
 explain why it chose those paths based on the current metrics. Be specific and technical but also clear."""
 
 
-async def _query_ollama(prompt: str, system: str, model: str) -> str:
+async def _query_ollama(prompt: str, system: str, model: str) -> str | None:
+    """Return the model's answer, or None if Ollama could not be reached."""
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             resp = await client.post(
@@ -61,10 +62,10 @@ async def _query_ollama(prompt: str, system: str, model: str) -> str:
             resp.raise_for_status()
             return resp.json().get("response", "No response generated.")
     except httpx.ConnectError:
-        return _fallback_response(prompt)
+        return None
     except Exception as e:
         logger.error("Ollama query failed: %s", e)
-        return _fallback_response(prompt)
+        return None
 
 
 def _fallback_response(query: str) -> str:
@@ -127,9 +128,12 @@ async def query_copilot(
     system_prompt = _build_system_prompt(context)
     start = time.time()
 
+    response_text = None
     if settings.copilot_enabled:
         response_text = await _query_ollama(request.query, system_prompt, settings.ollama_model)
-    else:
+    # Report which source actually answered, so fallback answers are not labelled as the LLM's
+    model_used = settings.ollama_model if response_text is not None else "rule-based"
+    if response_text is None:
         response_text = _fallback_response(request.query)
 
     latency_ms = (time.time() - start) * 1000
@@ -139,7 +143,7 @@ async def query_copilot(
         query=request.query,
         response=response_text,
         context_snapshot=context,
-        model_used=settings.ollama_model if settings.copilot_enabled else "rule-based",
+        model_used=model_used,
         latency_ms=latency_ms,
     )
     db.add(record)
@@ -149,7 +153,7 @@ async def query_copilot(
         query=request.query,
         response=response_text,
         context_used=bool(context),
-        model_used=settings.ollama_model if settings.copilot_enabled else "rule-based",
+        model_used=model_used,
         latency_ms=round(latency_ms, 2),
     )
 

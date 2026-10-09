@@ -118,7 +118,7 @@ export interface TrainingSession {
   hyperparameters: Record<string, unknown>;
   total_timesteps: number;
   current_timestep: number;
-  best_reward: number;
+  best_reward: number | null;
   model_path?: string;
   started_at?: string;
   completed_at?: string;
@@ -183,7 +183,7 @@ export interface TrainingUpdate {
   current_timestep: number;
   total_timesteps: number;
   progress_pct: number;
-  best_reward: number;
+  best_reward: number | null;
   latest_episode?: {
     total_reward: number;
     avg_latency_ms: number;

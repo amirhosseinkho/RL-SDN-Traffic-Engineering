@@ -242,7 +242,7 @@ export function TrainingPage() {
                   </div>
 
                   <div className="flex items-center gap-4 text-xs text-slate-400">
-                    <span>Best reward: <span className="text-white font-mono">{s.best_reward.toFixed(4)}</span></span>
+                    <span>Best reward: <span className="text-white font-mono">{s.best_reward?.toFixed(4) ?? '—'}</span></span>
                     {s.started_at && (
                       <span>Started: {new Date(s.started_at).toLocaleTimeString()}</span>
                     )}

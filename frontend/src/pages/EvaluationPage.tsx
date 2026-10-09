@@ -63,9 +63,9 @@ export function EvaluationPage() {
   // Prepare chart data
   const barData = comparison?.results.map((r) => ({
     name: r.agent_type.replace('_', ' ').toUpperCase(),
-    'Throughput (Mbps)': parseFloat(r.avg_throughput_mbps.toFixed(2)),
+    'Avg link utilization (%)': parseFloat(r.avg_throughput_mbps.toFixed(2)),
     'Latency (ms)': parseFloat(r.avg_latency_ms.toFixed(2)),
-    'Packet Loss %': parseFloat((r.avg_packet_loss * 100).toFixed(4)),
+    'Packet Loss %': parseFloat(r.avg_packet_loss.toFixed(4)),
     'Utilization %': parseFloat((r.avg_link_utilization * 100).toFixed(1)),
   }));
 
@@ -139,12 +139,12 @@ export function EvaluationPage() {
             <Trophy size={20} className="text-amber-400 shrink-0" />
             <div>
               <p className="text-sm font-semibold text-white">
-                Best performing agent: <span className="text-amber-400 uppercase">{comparison.best_agent}</span>
+                Highest mean reward: <span className="text-amber-400 uppercase">{comparison.best_agent}</span>
               </p>
               <div className="flex gap-4 mt-1 text-xs text-slate-400">
                 {Object.entries(comparison.improvement_over_shortest_path).map(([agent, improvement]) => (
                   <span key={agent}>
-                    <span className="uppercase text-slate-300">{agent}</span>: {improvement > 0 ? '+' : ''}{improvement}% throughput
+                    <span className="uppercase text-slate-300">{agent}</span>: {improvement > 0 ? '+' : ''}{improvement}% link utilization vs shortest path
                   </span>
                 ))}
               </div>
@@ -153,7 +153,7 @@ export function EvaluationPage() {
 
           {/* Bar chart comparison */}
           <div className="bg-slate-800 border border-slate-700 rounded-xl p-5">
-            <h2 className="text-sm font-semibold text-slate-200 mb-4">Throughput Comparison</h2>
+            <h2 className="text-sm font-semibold text-slate-200 mb-4">Average Link Utilization</h2>
             <ResponsiveContainer width="100%" height={250}>
               <BarChart data={barData} margin={{ top: 4, right: 16, bottom: 4, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
@@ -161,7 +161,7 @@ export function EvaluationPage() {
                 <YAxis stroke="#64748b" fontSize={11} />
                 <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: 8 }} />
                 <Legend />
-                <Bar dataKey="Throughput (Mbps)" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="Avg link utilization (%)" fill="#3b82f6" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -189,7 +189,7 @@ export function EvaluationPage() {
                   <thead>
                     <tr className="text-slate-400 border-b border-slate-700">
                       <th className="text-left py-2 pr-3">Agent</th>
-                      <th className="text-right py-2 pr-3">Throughput</th>
+                      <th className="text-right py-2 pr-3">Link util.</th>
                       <th className="text-right py-2 pr-3">Latency</th>
                       <th className="text-right py-2">Loss</th>
                     </tr>
@@ -200,9 +200,9 @@ export function EvaluationPage() {
                         <td className="py-2 pr-3 font-semibold uppercase" style={{ color: AGENT_COLORS[r.agent_type] }}>
                           {r.agent_type}
                         </td>
-                        <td className="text-right py-2 pr-3 text-white">{r.avg_throughput_mbps.toFixed(1)} Mbps</td>
+                        <td className="text-right py-2 pr-3 text-white">{r.avg_throughput_mbps.toFixed(1)}%</td>
                         <td className="text-right py-2 pr-3 text-white">{r.avg_latency_ms.toFixed(1)} ms</td>
-                        <td className="text-right py-2 text-white">{(r.avg_packet_loss * 100).toFixed(4)}%</td>
+                        <td className="text-right py-2 text-white">{r.avg_packet_loss.toFixed(4)}%</td>
                       </tr>
                     ))}
                   </tbody>

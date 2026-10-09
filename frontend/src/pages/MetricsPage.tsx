@@ -52,7 +52,7 @@ export function MetricsPage() {
         max_util: parseFloat((max(utils) * 100).toFixed(1)),
         latency: parseFloat(avg(latencies).toFixed(2)),
         throughput: parseFloat(avg(throughputs).toFixed(2)),
-        packet_loss: parseFloat((avg(losses) * 100).toFixed(4)),
+        packet_loss: parseFloat(avg(losses).toFixed(4)),
       };
 
       setHistory((prev) => [...prev.slice(-(maxHistory - 1)), point]);

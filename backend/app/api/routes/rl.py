@@ -72,35 +72,32 @@ async def _run_training(session_id: str, request: TrainingRequest) -> None:
                 await db.commit()
         return
 
-    episode_buffer: list[dict] = []
-
     async def progress_cb(info: dict) -> None:
-        episode_buffer.append(info)
-        if len(episode_buffer) >= 10:
-            async with async_session_factory() as db:
-                sess = await db.get(TrainingSession, session_id)
-                if not sess:
-                    return
-                sess.current_timestep = info.get("step", 0)
-                for ep_info in episode_buffer:
-                    ep = TrainingEpisode(
-                        session_id=session_id,
-                        episode_number=ep_info.get("episode", 0),
-                        total_reward=ep_info.get("mean_reward", 0.0),
-                        avg_latency_ms=ep_info.get("mean_latency_ms", 0.0),
-                        avg_throughput_mbps=ep_info.get("mean_throughput", 0.0),
-                        avg_packet_loss=ep_info.get("mean_packet_loss", 0.0),
-                        avg_link_utilization=ep_info.get("mean_utilization", 0.0),
-                        steps=ep_info.get("episode", 0),
-                        epsilon=ep_info.get("epsilon"),
-                        policy_loss=ep_info.get("policy_loss"),
-                        value_loss=ep_info.get("value_loss"),
-                    )
-                    if ep.total_reward > (sess.best_reward or float("-inf")):
-                        sess.best_reward = ep.total_reward
-                    db.add(ep)
-                await db.commit()
-            episode_buffer.clear()
+        # The trainers report every few episodes; persist each report right away
+        # (buffering here meant short runs never saved any progress).
+        async with async_session_factory() as db:
+            sess = await db.get(TrainingSession, session_id)
+            if not sess:
+                return
+            # Callbacks run as separate tasks and can finish out of order
+            sess.current_timestep = max(sess.current_timestep or 0, info.get("step", 0))
+            ep = TrainingEpisode(
+                session_id=session_id,
+                episode_number=info.get("episode", 0),
+                total_reward=info.get("mean_reward", 0.0),
+                avg_latency_ms=info.get("mean_latency_ms", 0.0),
+                avg_throughput_mbps=info.get("mean_throughput", 0.0),
+                avg_packet_loss=info.get("mean_packet_loss", 0.0),
+                avg_link_utilization=info.get("mean_utilization", 0.0),
+                steps=info.get("episode", 0),
+                epsilon=info.get("epsilon"),
+                policy_loss=info.get("policy_loss"),
+                value_loss=info.get("value_loss"),
+            )
+            if sess.best_reward is None or ep.total_reward > sess.best_reward:
+                sess.best_reward = ep.total_reward
+            db.add(ep)
+            await db.commit()
 
     try:
         if request.agent_type == AgentType.DQN:
@@ -292,10 +289,17 @@ async def get_comparison(
     if not eval_results:
         raise HTTPException(status_code=404, detail="No evaluation results for this topology")
 
-    # Find best agent by throughput
-    best = max(eval_results, key=lambda r: r.avg_throughput_mbps)
+    def mean_reward(r: EvaluationResult) -> float:
+        rewards = [e["total_reward"] for e in (r.raw_metrics or {}).get("episodes", []) if "total_reward" in e]
+        return sum(rewards) / len(rewards) if rewards else float("-inf")
+
+    # Best agent = highest mean episode reward (the objective the agents are trained on).
+    # Not avg_throughput_mbps: it holds average link utilization (%), which longer paths
+    # raise without delivering more traffic.
+    best = max(eval_results, key=mean_reward)
     baseline = next((r for r in eval_results if r.agent_type == AgentType.SHORTEST_PATH), None)
 
+    # Relative change in average link utilization vs shortest path
     improvements: dict[str, float] = {}
     if baseline:
         for r in eval_results:

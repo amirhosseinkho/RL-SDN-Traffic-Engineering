@@ -78,7 +78,7 @@ export function ProgressPage() {
               {[
                 { label: 'Progress', value: `${progress.progress_pct.toFixed(1)}%` },
                 { label: 'Episodes', value: progress.recent_episodes.length },
-                { label: 'Best Reward', value: progress.session.best_reward.toFixed(4) },
+                { label: 'Best Reward', value: progress.session.best_reward?.toFixed(4) ?? '—' },
                 { label: 'Status', value: progress.session.status },
               ].map(({ label, value }) => (
                 <div key={label} className="bg-slate-800 border border-slate-700 rounded-xl p-4">

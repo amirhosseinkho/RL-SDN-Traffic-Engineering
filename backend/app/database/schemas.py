@@ -148,7 +148,7 @@ class TrainingSessionResponse(OrmBase):
     hyperparameters: dict[str, Any]
     total_timesteps: int
     current_timestep: int
-    best_reward: float
+    best_reward: float | None
     model_path: Optional[str]
     started_at: Optional[datetime]
     completed_at: Optional[datetime]

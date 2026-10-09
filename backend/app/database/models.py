@@ -151,7 +151,7 @@ class TrainingSession(Base):
     hyperparameters: Mapped[dict] = mapped_column(JSON, default=dict)
     total_timesteps: Mapped[int] = mapped_column(Integer, default=0)
     current_timestep: Mapped[int] = mapped_column(Integer, default=0)
-    best_reward: Mapped[float] = mapped_column(Float, default=float("-inf"))
+    best_reward: Mapped[float | None] = mapped_column(Float, nullable=True, default=None)
     model_path: Mapped[Optional[str]] = mapped_column(String(512))
     started_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))

@@ -37,7 +37,7 @@ function MetricCard({
 }
 
 export function MetricsCards({ summary, isConnected }: Props) {
-  if (!summary) {
+  if (!summary || summary.total_links === undefined) {
     return (
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         {Array.from({ length: 6 }).map((_, i) => (
@@ -87,7 +87,7 @@ export function MetricsCards({ summary, isConnected }: Props) {
       <MetricCard
         icon={Zap}
         label="Packet Loss"
-        value={(summary.avg_packet_loss * 100).toFixed(3)}
+        value={summary.avg_packet_loss.toFixed(3)}
         unit="%"
         color="text-red-400"
         subtext="Average across links"
