@@ -219,7 +219,7 @@ class PPOAgent:
         if deterministic:
             # Greedy: pick argmax of each head
             logits_list, value_t = self.policy(obs_t)
-            action_t = torch.stack([l.argmax(dim=-1) for l in logits_list], dim=-1)
+            action_t = torch.stack([logits.argmax(dim=-1) for logits in logits_list], dim=-1)
 
         action = action_t.squeeze(0).cpu().numpy()
         log_prob = float(log_prob_t.item())

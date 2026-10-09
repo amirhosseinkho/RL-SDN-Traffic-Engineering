@@ -10,10 +10,15 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Response
 from fastapi.responses import StreamingResponse
+from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc
 
-from app.database.models import EvaluationResult, Topology, TrainingSession, TrainingEpisode
+from app.database.models import (
+    EvaluationResult,
+    Topology,
+    TrainingEpisode,
+    TrainingSession,
+)
 from app.database.schemas import ReportRequest
 from app.database.session import get_db
 
@@ -91,7 +96,7 @@ async def _build_report_data(
     }
 
 
-@router.post("/generate")
+@router.post("/generate", response_model=None)
 async def generate_report(
     request: ReportRequest,
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -149,9 +154,8 @@ async def generate_report(
         # Generate a simple PDF using reportlab if available, otherwise return JSON
         try:
             from reportlab.lib.pagesizes import letter
-            from reportlab.platypus import SimpleDocTemplate, Paragraph, Table, Spacer
             from reportlab.lib.styles import getSampleStyleSheet
-            from reportlab.lib import colors
+            from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table
 
             buf = io.BytesIO()
             doc = SimpleDocTemplate(buf, pagesize=letter)

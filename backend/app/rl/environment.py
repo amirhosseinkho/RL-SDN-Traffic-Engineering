@@ -1,14 +1,12 @@
 """SDN Routing Gymnasium environment for RL training."""
 from __future__ import annotations
 
-import random
-import time
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
+import gymnasium as gym
 import networkx as nx
 import numpy as np
-import gymnasium as gym
 from gymnasium import spaces
 
 from app.topology.generator import TopologyDefinition
@@ -79,6 +77,7 @@ class SDNRoutingEnv(gym.Env):
         traffic_intensity: float = 0.6,
         congestion_threshold: float = 0.8,
         reward_weights: dict[str, float] | None = None,
+        seed: int = 42,
     ) -> None:
         super().__init__()
 
@@ -120,7 +119,7 @@ class SDNRoutingEnv(gym.Env):
         self.action_space = spaces.MultiDiscrete([self.max_paths] * self.max_flows)
 
         self.sim_state = SimState()
-        self._rng = np.random.default_rng(42)
+        self._rng = np.random.default_rng(seed)
 
     # ─── Path precomputation ──────────────────────────────────────────────
 
@@ -301,8 +300,7 @@ class SDNRoutingEnv(gym.Env):
         congested = sum(1 for u in utilizations if u > self.congestion_threshold)
         congestion_ratio = congested / max(len(link_states), 1)
 
-        # Normalize latency (baseline 5ms, cap at 50ms)
-        baseline_latency = 5.0
+        # Normalize latency (cap at 50ms)
         norm_latency = min(1.0, avg_latency / 50.0)
 
         # Throughput gain: reward well-utilized but not over-utilized links
@@ -340,7 +338,6 @@ class SDNRoutingEnv(gym.Env):
                 obs.extend([0.0, 0.0, 0.0, 0.0])
 
         # Flow features (padded to max_flows)
-        all_bw = sum(f.demand_mbps for f in self.sim_state.flow_demands) or 1.0
         for i in range(self.max_flows):
             if i < len(self.sim_state.flow_demands):
                 flow = self.sim_state.flow_demands[i]

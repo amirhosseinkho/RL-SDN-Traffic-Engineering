@@ -49,9 +49,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     await _collector.start()
 
     # Wire collector into routes
-    from app.api.routes import metrics as metrics_route
-    from app.api.routes import copilot as copilot_route
     from app.api import websocket as ws_module
+    from app.api.routes import copilot as copilot_route
+    from app.api.routes import metrics as metrics_route
 
     metrics_route.set_collector(_collector)
     copilot_route.set_collector(_collector)
@@ -92,12 +92,12 @@ def create_app() -> FastAPI:
     app.add_middleware(GZipMiddleware, minimum_size=1000)
 
     # ── Routers ──────────────────────────────────────────────────────────────
-    from app.api.routes.topology import router as topology_router
-    from app.api.routes.metrics import router as metrics_router
-    from app.api.routes.flows import router as flows_router
-    from app.api.routes.rl import router as rl_router
-    from app.api.routes.reports import router as reports_router
     from app.api.routes.copilot import router as copilot_router
+    from app.api.routes.flows import router as flows_router
+    from app.api.routes.metrics import router as metrics_router
+    from app.api.routes.reports import router as reports_router
+    from app.api.routes.rl import router as rl_router
+    from app.api.routes.topology import router as topology_router
     from app.api.websocket import router as ws_router
 
     prefix = settings.api_prefix

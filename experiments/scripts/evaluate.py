@@ -41,6 +41,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--ppo-model", type=Path, default=Path("models/ppo_model.pt"))
     p.add_argument("--episodes", type=int, default=20)
     p.add_argument("--output", type=Path, default=Path("results/comparison.json"))
+    p.add_argument("--seed", type=int, default=42, help="Seed for the evaluation traffic")
     return p.parse_args()
 
 
@@ -82,7 +83,7 @@ async def main() -> None:
     else:
         logger.warning("PPO model not found at %s — skipping", args.ppo_model)
 
-    evaluator = Evaluator(topo_def)
+    evaluator = Evaluator(topo_def, seed=args.seed)
     logger.info("Evaluating %d agents over %d episodes each...", len(agents) + 2, args.episodes)
 
     results = await evaluator.compare_all(agents, num_episodes=args.episodes)
@@ -112,6 +113,7 @@ async def main() -> None:
     output = {
         "topology": cfg.model_dump(),
         "episodes": args.episodes,
+        "seed": args.seed,
         "results": {
             agent_type.value: {
                 "avg_reward": result.avg_reward,

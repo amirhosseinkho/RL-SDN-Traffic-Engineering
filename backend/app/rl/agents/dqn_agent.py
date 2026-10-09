@@ -1,9 +1,7 @@
 """Deep Q-Network (DQN) agent for SDN traffic engineering."""
 from __future__ import annotations
 
-import os
 import random
-from collections import deque
 from pathlib import Path
 from typing import Any
 

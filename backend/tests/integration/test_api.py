@@ -4,18 +4,18 @@ import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
 from app.main import app
-from app.database.session import create_tables, drop_tables
+from app.database.session import create_tables, drop_tables, engine
 
 
 @pytest_asyncio.fixture(scope="module")
 async def client():
-    """Spin up test app with in-memory SQLite."""
-    import os
-    os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
+    """Spin up test app with in-memory SQLite (DATABASE_URL is set in tests/conftest.py)."""
     await create_tables()
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         yield ac
     await drop_tables()
+    # Without this, aiosqlite's worker thread keeps the test process alive
+    await engine.dispose()
 
 
 @pytest.mark.asyncio

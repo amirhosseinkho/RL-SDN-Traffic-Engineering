@@ -1,8 +1,6 @@
 """Topology generator supporting multiple SDN topology types."""
 from __future__ import annotations
 
-import json
-import math
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -121,7 +119,6 @@ class TopologyGenerator:
     def _linear(self, cfg: TopologyConfig) -> TopologyDefinition:
         n = cfg.num_switches
         topo = TopologyDefinition(topology_type=TopologyType.LINEAR, config=cfg.model_dump())
-        graph = nx.path_graph(n)
 
         for i in range(n):
             sw = SwitchNode(name=f"s{i+1}", dpid=i + 1)
@@ -260,7 +257,6 @@ class TopologyGenerator:
 
         # Pods
         host_idx = 1
-        sw_global = 1
         for pod in range(num_pods):
             agg_switches: list[SwitchNode] = []
             edge_switches: list[SwitchNode] = []

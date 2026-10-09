@@ -3,11 +3,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import time
 from dataclasses import dataclass, field
 from typing import Any
 
-import networkx as nx
 import numpy as np
 
 from app.database.models import AgentType
@@ -93,8 +91,9 @@ class ECMPRouter:
 class Evaluator:
     """Runs comparative evaluation across routing algorithms."""
 
-    def __init__(self, topology: TopologyDefinition) -> None:
+    def __init__(self, topology: TopologyDefinition, seed: int = 42) -> None:
         self.topology = topology
+        self.seed = seed
 
     async def evaluate_agent(
         self,
@@ -104,7 +103,8 @@ class Evaluator:
         max_steps: int = 200,
     ) -> EvalResult:
         result = EvalResult(agent_type=agent_type)
-        env = SDNRoutingEnv(self.topology, max_steps=max_steps)
+        # Every agent gets a fresh env with the same seed, so all see the same traffic
+        env = SDNRoutingEnv(self.topology, max_steps=max_steps, seed=self.seed)
 
         if agent_type == AgentType.SHORTEST_PATH:
             router: Any = ShortestPathRouter(env)

@@ -39,6 +39,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--n-epochs", type=int, default=10)
     p.add_argument("--gamma", type=float, default=0.99)
     p.add_argument("--clip-range", type=float, default=0.2)
+    p.add_argument("--output-dir", type=Path, default=Path("models"))
+    p.add_argument("--seed", type=int, default=None, help="Seed for agent, sampling and traffic")
     return p.parse_args()
 
 
@@ -74,6 +76,8 @@ async def main() -> None:
         total_timesteps=args.timesteps,
         hyperparams=hyperparams,
         session_id="ppo-cli",
+        seed=args.seed,
+        models_dir=args.output_dir,
     )
 
     logger.info("Starting PPO training for %d timesteps...", args.timesteps)

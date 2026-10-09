@@ -41,6 +41,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--buffer-size", type=int, default=100_000)
     p.add_argument("--epsilon-decay", type=int, default=50_000)
     p.add_argument("--output-dir", type=Path, default=Path("models"))
+    p.add_argument("--seed", type=int, default=None, help="Seed for agent, exploration and traffic")
     return p.parse_args()
 
 
@@ -79,6 +80,8 @@ async def main() -> None:
         total_timesteps=args.timesteps,
         hyperparams=hyperparams,
         session_id="cli-session",
+        seed=args.seed,
+        models_dir=args.output_dir,
     )
 
     logger.info("Starting DQN training for %d timesteps...", args.timesteps)

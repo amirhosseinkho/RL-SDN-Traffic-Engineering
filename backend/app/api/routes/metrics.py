@@ -5,11 +5,11 @@ import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc
 
 from app.database.models import LinkMetric, Topology
-from app.database.schemas import LinkMetricResponse, NetworkMetricsSummary
+from app.database.schemas import LinkMetricResponse
 from app.database.session import get_db
 from app.monitoring.collector import MetricsCollector
 

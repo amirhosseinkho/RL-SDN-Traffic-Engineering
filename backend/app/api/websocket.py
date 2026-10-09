@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 from typing import Any
 
@@ -95,9 +94,10 @@ async def training_websocket(ws: WebSocket, session_id: str) -> None:
     try:
         # Poll the database for updates
         while True:
+            from sqlalchemy import desc, select
+
+            from app.database.models import TrainingEpisode, TrainingSession
             from app.database.session import async_session_factory
-            from app.database.models import TrainingSession, TrainingEpisode
-            from sqlalchemy import select, desc
 
             async with async_session_factory() as db:
                 session = await db.get(TrainingSession, session_id)

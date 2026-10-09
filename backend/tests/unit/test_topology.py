@@ -91,16 +91,19 @@ def test_fat_tree_k_must_be_even(generator: TopologyGenerator) -> None:
 def test_custom_topology(generator: TopologyGenerator) -> None:
     custom_data = {
         "switches": [{"name": "s1", "dpid": 1}, {"name": "s2", "dpid": 2}],
-        "hosts": [{"name": "h1", "ip": "10.0.0.1", "mac": "00:00:00:00:00:01", "connected_switch": "s1"}],
+        "hosts": [
+            {"name": "h1", "ip": "10.0.0.1", "mac": "00:00:00:00:00:01", "connected_switch": "s1"},
+            {"name": "h2", "ip": "10.0.0.2", "mac": "00:00:00:00:00:02", "connected_switch": "s2"},
+        ],
         "links": [{"src": "s1", "dst": "s2", "bandwidth": 100, "latency": 5, "loss": 0}],
     }
     cfg = TopologyConfig(
         topology_type=TopologyType.CUSTOM,
         num_switches=2,
-        num_hosts=1,
+        num_hosts=2,
         custom_data=custom_data,
         name="custom-test",
     )
     topo = generator.generate(cfg)
     assert len(topo.switches) == 2
-    assert len(topo.hosts) == 1
+    assert len(topo.hosts) == 2

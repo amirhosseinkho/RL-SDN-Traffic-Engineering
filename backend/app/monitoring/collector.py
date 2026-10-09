@@ -4,14 +4,14 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from collections import defaultdict, deque
+from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
 
 from app.config import get_settings
 from app.controller.ryu_controller import RyuControllerClient
-from app.rl.environment import SDNRoutingEnv, SimState
+from app.rl.environment import SDNRoutingEnv
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -112,7 +112,6 @@ class MetricsCollector:
                 if not await ryu.health_check():
                     return snapshots
 
-                switches = await ryu.get_switches()
                 links = await ryu.get_links()
 
                 now = time.time()

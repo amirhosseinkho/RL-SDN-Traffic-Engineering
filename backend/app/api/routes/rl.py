@@ -7,8 +7,8 @@ from datetime import datetime, timezone
 from typing import Annotated, Any
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc
 
 from app.database.models import (
     AgentType,
@@ -19,15 +19,15 @@ from app.database.models import (
     TrainingStatus,
 )
 from app.database.schemas import (
+    ComparisonResponse,
     EvaluationRequest,
     EvaluationResultResponse,
     TrainingEpisodeResponse,
     TrainingProgressResponse,
     TrainingRequest,
     TrainingSessionResponse,
-    ComparisonResponse,
 )
-from app.database.session import get_db, async_session_factory
+from app.database.session import async_session_factory, get_db
 from app.rl.trainer import build_dqn_trainer, build_ppo_trainer
 from app.simulation.evaluator import Evaluator
 from app.topology.generator import TopologyGenerator
@@ -123,7 +123,7 @@ async def _run_training(session_id: str, request: TrainingRequest) -> None:
             raise ValueError(f"Unsupported agent type: {request.agent_type}")
 
         _active_trainers[session_id] = trainer
-        metrics = await trainer.train()
+        await trainer.train()
 
         async with async_session_factory() as db:
             sess = await db.get(TrainingSession, session_id)

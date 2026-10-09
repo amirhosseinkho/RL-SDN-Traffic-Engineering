@@ -12,7 +12,7 @@ from ryu.app import simple_switch_13
 from ryu.base import app_manager
 from ryu.controller import ofp_event
 from ryu.controller.handler import CONFIG_DISPATCHER, MAIN_DISPATCHER, set_ev_cls
-from ryu.lib.packet import ether_types, ethernet, ipv4, packet
+from ryu.lib.packet import ether_types, ethernet, packet
 from ryu.ofproto import ofproto_v1_3
 from ryu.topology import event as topo_event
 from ryu.topology.api import get_all_host, get_all_link, get_all_switch

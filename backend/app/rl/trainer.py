@@ -3,14 +3,15 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import random
 import time
 from pathlib import Path
-from typing import Any, AsyncGenerator, Callable
+from typing import Any, Callable
 
 import numpy as np
+import torch
 
 from app.config import get_settings
-from app.database.models import AgentType
 from app.rl.agents.dqn_agent import DQNAgent
 from app.rl.agents.ppo_agent import PPOAgent
 from app.rl.environment import SDNRoutingEnv
@@ -76,6 +77,7 @@ class DQNTrainer:
         train_freq: int = 4,
         checkpoint_freq: int = 50_000,
         checkpoint_dir: Path | None = None,
+        models_dir: Path | None = None,
         session_id: str | None = None,
         progress_callback: Callable[[dict[str, Any]], None] | None = None,
     ) -> None:
@@ -86,6 +88,7 @@ class DQNTrainer:
         self.train_freq = train_freq
         self.checkpoint_freq = checkpoint_freq
         self.checkpoint_dir = checkpoint_dir or settings.rl_checkpoints_dir
+        self.models_dir = models_dir or settings.rl_models_dir
         self.session_id = session_id
         self.progress_callback = progress_callback
         self.metrics = TrainingMetrics()
@@ -172,7 +175,7 @@ class DQNTrainer:
                 await asyncio.sleep(0)
 
         # Final save
-        final_path = settings.rl_models_dir / "dqn_model.pt"
+        final_path = self.models_dir / "dqn_model.pt"
         self.agent.save(final_path)
         logger.info("DQN training complete. Model saved to %s", final_path)
         return self.metrics
@@ -189,6 +192,7 @@ class PPOTrainer:
         n_steps: int = 2048,
         checkpoint_freq: int = 100_000,
         checkpoint_dir: Path | None = None,
+        models_dir: Path | None = None,
         session_id: str | None = None,
         progress_callback: Callable[[dict[str, Any]], None] | None = None,
     ) -> None:
@@ -198,6 +202,7 @@ class PPOTrainer:
         self.n_steps = n_steps
         self.checkpoint_freq = checkpoint_freq
         self.checkpoint_dir = checkpoint_dir or settings.rl_checkpoints_dir
+        self.models_dir = models_dir or settings.rl_models_dir
         self.session_id = session_id
         self.progress_callback = progress_callback
         self.metrics = TrainingMetrics()
@@ -284,10 +289,17 @@ class PPOTrainer:
             await asyncio.sleep(0)
 
         # Final save
-        final_path = settings.rl_models_dir / "ppo_model.pt"
+        final_path = self.models_dir / "ppo_model.pt"
         self.agent.save(final_path)
         logger.info("PPO training complete. Model saved to %s", final_path)
         return self.metrics
+
+
+def set_global_seed(seed: int) -> None:
+    """Seed Python, NumPy and PyTorch RNGs (agent init, exploration, replay sampling)."""
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
 
 
 def build_dqn_trainer(
@@ -296,9 +308,13 @@ def build_dqn_trainer(
     hyperparams: dict[str, Any] | None = None,
     session_id: str | None = None,
     progress_callback: Callable | None = None,
+    seed: int | None = None,
+    models_dir: Path | None = None,
 ) -> tuple[SDNRoutingEnv, DQNAgent, DQNTrainer]:
     hp = hyperparams or {}
-    env = SDNRoutingEnv(topology, max_steps=200)
+    if seed is not None:
+        set_global_seed(seed)
+    env = SDNRoutingEnv(topology, max_steps=200, **({"seed": seed} if seed is not None else {}))
     obs_dim = env.observation_space.shape[0]
     action_dims = list(env.action_space.nvec)
 
@@ -320,6 +336,8 @@ def build_dqn_trainer(
         env=env,
         agent=agent,
         total_timesteps=total_timesteps,
+        models_dir=models_dir,
+        checkpoint_dir=models_dir / "checkpoints" if models_dir else None,
         session_id=session_id,
         progress_callback=progress_callback,
     )
@@ -332,10 +350,14 @@ def build_ppo_trainer(
     hyperparams: dict[str, Any] | None = None,
     session_id: str | None = None,
     progress_callback: Callable | None = None,
+    seed: int | None = None,
+    models_dir: Path | None = None,
 ) -> tuple[SDNRoutingEnv, PPOAgent, PPOTrainer]:
     hp = hyperparams or {}
+    if seed is not None:
+        set_global_seed(seed)
     n_steps = hp.get("n_steps", settings.ppo_n_steps)
-    env = SDNRoutingEnv(topology, max_steps=n_steps)
+    env = SDNRoutingEnv(topology, max_steps=n_steps, **({"seed": seed} if seed is not None else {}))
     obs_dim = env.observation_space.shape[0]
     action_dims = list(env.action_space.nvec)
 
@@ -356,6 +378,8 @@ def build_ppo_trainer(
         agent=agent,
         total_timesteps=total_timesteps,
         n_steps=n_steps,
+        models_dir=models_dir,
+        checkpoint_dir=models_dir / "checkpoints" if models_dir else None,
         session_id=session_id,
         progress_callback=progress_callback,
     )

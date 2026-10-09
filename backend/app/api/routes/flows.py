@@ -5,10 +5,12 @@ import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update
 
-from app.controller.ryu_controller import RyuControllerClient, TopologyManager, FlowManager
+from app.controller.ryu_controller import (
+    RyuControllerClient,
+)
 from app.database.models import Flow, Topology
 from app.database.schemas import FlowInstallRequest, FlowResponse
 from app.database.session import get_db
@@ -27,7 +29,7 @@ async def list_flows(
     if topology_id:
         query = query.where(Flow.topology_id == topology_id)
     if active_only:
-        query = query.where(Flow.is_active == True)
+        query = query.where(Flow.is_active.is_(True))
     result = await db.execute(query)
     return list(result.scalars().all())
 
@@ -65,7 +67,7 @@ async def install_flow(
     return flow
 
 
-@router.delete("/{flow_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{flow_id}", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
 async def remove_flow(
     flow_id: str,
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -82,7 +84,7 @@ async def flow_stats_summary(
     topology_id: str | None = None,
     db: Annotated[AsyncSession, Depends(get_db)] = None,
 ) -> dict:
-    query = select(Flow).where(Flow.is_active == True)
+    query = select(Flow).where(Flow.is_active.is_(True))
     if topology_id:
         query = query.where(Flow.topology_id == topology_id)
     result = await db.execute(query)

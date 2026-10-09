@@ -5,16 +5,16 @@ import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database.models import Topology, TopologyType
+from app.database.models import Topology
 from app.database.schemas import (
+    EdgeResponse,
+    NodeResponse,
     TopologyConfig,
     TopologyGraphResponse,
     TopologyResponse,
-    NodeResponse,
-    EdgeResponse,
 )
 from app.database.session import get_db
 from app.topology.generator import TopologyGenerator
@@ -99,7 +99,7 @@ async def activate_topology(
     return topo
 
 
-@router.delete("/{topology_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{topology_id}", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
 async def delete_topology(
     topology_id: str,
     db: Annotated[AsyncSession, Depends(get_db)],

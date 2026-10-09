@@ -3,12 +3,10 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import Any, Optional
-from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.database.models import AgentType, TopologyType, TrainingStatus
-
 
 # ─── Base ────────────────────────────────────────────────────────────────────
 

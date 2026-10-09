@@ -159,7 +159,7 @@ async def get_query_history(
     limit: int = 20,
     db: Annotated[AsyncSession, Depends(get_db)] = None,
 ) -> list[dict]:
-    from sqlalchemy import select, desc
+    from sqlalchemy import desc, select
     result = await db.execute(
         select(CopilotQuery).order_by(desc(CopilotQuery.created_at)).limit(limit)
     )
