@@ -2,8 +2,7 @@
 
 ## Overview
 
-> Status: only the RL core (topology generator, simulated environment, DQN/PPO agents, evaluator)
-> has been verified. The backend currently fails to start, and the Ryu path is untested. There is
+> Status: the RL core, the backend and the dashboard run. The Ryu path is untested, and there is
 > no Mininet integration. See [../STATUS.md](../STATUS.md).
 
 The intended design is layered:
@@ -107,17 +106,21 @@ RL training and evaluation (verified with the CLI scripts):
 2. SDNRoutingEnv generates synthetic flows and simulates link state
 3. Agent selects one of K paths per flow → env updates utilization → reward computed
 4. Training loop → model saved to models/ → loaded by evaluate.py
-5. Evaluator compares agents with shortest-path and ECMP baselines in the same simulation
+5. Evaluator compares agents with shortest-path, ECMP and random baselines in the same simulation
 ```
 
-Monitoring path (code exists, not verified):
+Monitoring path:
 
 ```
-1. MetricsCollector polls Ryu's REST API for switches, links and port stats
-   (interval: metrics_collection_interval = 1.0 s in config.py)
-2. If Ryu is unreachable, it reads link state from the simulated environment instead
-3. Snapshots are broadcast to the dashboard over WebSocket
+1. MetricsCollector tries Ryu's REST API for links and port stats every
+   metrics_collection_interval (1.0 s in config.py)            [not verified]
+2. If Ryu is unreachable, it advances a simulation of the active topology by
+   one step (shortest-path routing) and reads its link state  [verified]
+3. Snapshots are broadcast to the dashboard over /ws/metrics   [verified]
 ```
+
+Activating a topology (`POST /topology/{id}/activate`, or the active topology at startup) sets
+which topology the collector simulates.
 
 ## Database Schema
 

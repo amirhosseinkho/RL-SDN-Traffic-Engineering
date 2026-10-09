@@ -1,7 +1,8 @@
 # Training Guide
 
-> No full training runs have been done yet, so this guide documents how training is set up in the
-> code, not what works best. Hyperparameter advice will be added once experiments exist.
+> This guide documents how training is set up in the code, not what works best. The
+> [first experiment](../experiments/first_experiment/README.md) showed that with the current reward,
+> trained agents do no better than random routing, so no hyperparameter advice is given yet.
 > See [../STATUS.md](../STATUS.md) for what has been verified.
 
 ## Agents
@@ -51,32 +52,41 @@ The reward weights are set through the `reward_weights` argument of `SDNRoutingE
 reward_weights = {"throughput": 1.0, "latency": 0.3, "congestion": 0.5, "packet_loss": 0.4}
 ```
 
-The effect of other weightings has not been studied yet.
+`throughput_gain` grows with average link utilization. Routing over longer paths puts the same
+traffic on more links and raises it, so with these weights random routing earns about as much reward
+as the trained agents and far more than shortest path, even though shortest path has lower latency
+and loss (see the first experiment). Other weightings have not been studied.
 
 ## Practical Notes
 
-These are observations from short runs, not tuning advice.
+These are observations from the runs so far, not tuning advice.
 
 1. A model can only be evaluated on the topology it was trained on: the observation size depends
    on the number of links. Loading a `fat_tree` model into a `spine_leaf` evaluation fails with a
    size mismatch.
-2. Final models are always written to `models/dqn_model.pt` and `models/ppo_model.pt`, and checkpoints
-   to `models/checkpoints/`. The `--output-dir` flag of `train_dqn.py` is currently ignored.
-3. For `fat_tree` with `k=4`, precomputing the K shortest paths between all host pairs took about
+2. `--output-dir DIR` saves the final model to `DIR/dqn_model.pt` or `DIR/ppo_model.pt` and
+   checkpoints to `DIR/checkpoints/` (default `models/`).
+3. `--seed N` seeds Python, NumPy, PyTorch and the simulated traffic. Two DQN runs with the same
+   seed produced identical weights.
+4. DQN makes no gradient updates before step 10,000 (`learning_starts`), so shorter runs leave the
+   network untrained.
+5. PPO trains on episodes of `n_steps` (2,048) steps, while evaluation uses 200-step episodes.
+6. For `fat_tree` with `k=4`, precomputing the K shortest paths between all host pairs took about
    8 minutes before training started.
-4. No TensorBoard logging is implemented. Training progress is printed to the console log.
+7. No TensorBoard logging is implemented. Training progress is printed to the console log.
 
 ## Comparing Agents
 
-After training, compare the agents with the shortest-path and ECMP baselines, using the same
-topology arguments as in training:
+After training, compare the agents with the shortest-path, ECMP and random baselines, using the
+same topology arguments as in training and an evaluation seed that differs from the training seeds:
 
 ```bash
 python experiments/scripts/evaluate.py \
     --topology spine_leaf --num-switches 6 --num-hosts 8 \
-    --dqn-model models/dqn_model.pt \
-    --episodes 50 \
+    --dqn-model models/seed_0/dqn_model.pt \
+    --ppo-model models/seed_0/ppo_model.pt \
+    --episodes 20 --seed 1000 \
     --output results/comparison.json
 ```
 
-There are no results yet.
+To repeat the first experiment (3 seeds per agent), run `bash experiments/first_experiment/run.sh`.

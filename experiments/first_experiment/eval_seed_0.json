@@ -1,0 +1,76 @@
+{
+  "topology": {
+    "topology_type": "spine_leaf",
+    "num_switches": 6,
+    "num_hosts": 8,
+    "bandwidth": 100.0,
+    "latency": 5.0,
+    "loss": 0.0,
+    "k": 4,
+    "depth": 2,
+    "fanout": 2,
+    "num_spine": 2,
+    "num_leaf": 4,
+    "custom_data": null,
+    "name": "eval-topology"
+  },
+  "episodes": 20,
+  "seed": 1000,
+  "results": {
+    "shortest_path": {
+      "avg_reward": 18.224479492408477,
+      "avg_latency_ms": 12.112801465106667,
+      "avg_throughput_pct": 48.48124183929358,
+      "avg_packet_loss": 0.4605385108500961,
+      "convergence_time_s": 40.7
+    },
+    "ecmp": {
+      "avg_reward": 27.109142891865645,
+      "avg_latency_ms": 14.76382779638657,
+      "avg_throughput_pct": 66.46873656425905,
+      "avg_packet_loss": 0.6334749338500545,
+      "convergence_time_s": null
+    },
+    "dqn": {
+      "avg_reward": 44.002633882583844,
+      "avg_latency_ms": 15.847843279058988,
+      "avg_throughput_pct": 78.8961256516553,
+      "avg_packet_loss": 0.6510451538098325,
+      "convergence_time_s": 129.47058823529412
+    },
+    "ppo": {
+      "avg_reward": 42.71879685138958,
+      "avg_latency_ms": 17.976949422955347,
+      "avg_throughput_pct": 90.19902451710605,
+      "avg_packet_loss": 0.8223294853719354,
+      "convergence_time_s": 68.94736842105263
+    },
+    "random": {
+      "avg_reward": 42.58268409023366,
+      "avg_latency_ms": 17.81763144029166,
+      "avg_throughput_pct": 89.23265318723773,
+      "avg_packet_loss": 0.8102098398758649,
+      "convergence_time_s": 114.07692307692308
+    }
+  },
+  "improvements": {
+    "ecmp": {
+      "latency_reduction_pct": -21.89,
+      "throughput_gain_pct": 17.99,
+      "packet_loss_reduction": -0.1729,
+      "reward_improvement": 8.8847
+    },
+    "dqn": {
+      "latency_reduction_pct": -30.84,
+      "throughput_gain_pct": 30.41,
+      "packet_loss_reduction": -0.1905,
+      "reward_improvement": 25.7782
+    },
+    "ppo": {
+      "latency_reduction_pct": -48.41,
+      "throughput_gain_pct": 41.72,
+      "packet_loss_reduction": -0.3618,
+      "reward_improvement": 24.4943
+    }
+  }
+}
