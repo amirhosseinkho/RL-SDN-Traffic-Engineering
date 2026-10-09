@@ -37,8 +37,8 @@ export function ReportsPage() {
       a.download = `sdn_report.${format}`;
       a.click();
       URL.revokeObjectURL(url);
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
     } finally {
       setGenerating(false);
     }

@@ -1,4 +1,4 @@
-import type { WSMessage, LinkMetric, TrainingUpdate } from '../types';
+import type { WSMessage, TrainingUpdate } from '../types';
 
 type WSCallback<T> = (data: T) => void;
 

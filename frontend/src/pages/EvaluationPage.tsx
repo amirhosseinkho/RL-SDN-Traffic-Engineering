@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 import { rlApi, topologyApi } from '../services/api';
-import type { Topology, EvaluationResult, ComparisonResult } from '../types';
+import type { Topology, ComparisonResult } from '../types';
 import {
-  RadarChart, Radar, PolarGrid, PolarAngleAxis,
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
 import { Trophy, BarChart2 } from 'lucide-react';
@@ -48,8 +47,8 @@ export function EvaluationPage() {
       });
       const comp = await rlApi.compare(selectedTopo);
       setComparison(comp);
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
     } finally {
       setRunning(false);
     }

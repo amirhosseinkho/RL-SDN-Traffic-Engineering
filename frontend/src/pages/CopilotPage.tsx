@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { copilotApi } from '../services/api';
-import { MessageSquare, Send, Bot, User, Loader } from 'lucide-react';
-import type { CopilotResponse } from '../types';
+import { Send, Bot, User, Loader } from 'lucide-react';
 
 const SUGGESTIONS = [
   'Why is latency increasing on this network?',
@@ -59,11 +58,11 @@ export function CopilotPage() {
         model: resp.model_used,
       };
       setMessages((prev) => [...prev, assistantMsg]);
-    } catch (e: any) {
+    } catch (e) {
       const errorMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: `Sorry, I encountered an error: ${e.message}`,
+        content: `Sorry, I encountered an error: ${e instanceof Error ? e.message : String(e)}`,
       };
       setMessages((prev) => [...prev, errorMsg]);
     } finally {

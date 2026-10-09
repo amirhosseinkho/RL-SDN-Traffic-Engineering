@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { topologyApi } from '../services/api';
 import { TopologyGraph } from '../components/TopologyGraph';
 import { useNetworkStore } from '../store';
-import type { Topology, TopologyConfig, GraphData } from '../types';
-import { Plus, Cpu, CheckCircle } from 'lucide-react';
+import type { Topology, TopologyConfig, TopologyType, GraphData } from '../types';
+import { Plus, Cpu, CheckCircle, Network } from 'lucide-react';
 
 const defaultConfig: TopologyConfig = {
   topology_type: 'spine_leaf',
@@ -22,7 +22,6 @@ export function TopologyPage() {
   const [selected, setSelected] = useState<Topology | null>(null);
   const [graphData, setGraphData] = useState<GraphData | null>(null);
   const [config, setConfig] = useState<TopologyConfig>(defaultConfig);
-  const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -48,8 +47,8 @@ export function TopologyPage() {
       const updated = await topologyApi.list();
       setTopologies(updated);
       await loadGraph(topo);
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
     } finally {
       setCreating(false);
     }
@@ -85,7 +84,7 @@ export function TopologyPage() {
               <select
                 className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-white text-sm"
                 value={config.topology_type}
-                onChange={(e) => setConfig({ ...config, topology_type: e.target.value as any })}
+                onChange={(e) => setConfig({ ...config, topology_type: e.target.value as TopologyType })}
               >
                 <option value="linear">Linear</option>
                 <option value="tree">Tree</option>

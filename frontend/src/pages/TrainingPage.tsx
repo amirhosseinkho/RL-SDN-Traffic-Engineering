@@ -36,7 +36,7 @@ export function TrainingPage() {
     if (topologies.length > 0 && !config.topology_id) {
       setConfig((c) => ({ ...c, topology_id: topologies[0].id }));
     }
-  }, [topologies]);
+  }, [topologies, config.topology_id]);
 
   const handleStart = async () => {
     if (!config.topology_id) return;
@@ -54,8 +54,8 @@ export function TrainingPage() {
         },
       });
       addTrainingSession(session);
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
     } finally {
       setStarting(false);
     }

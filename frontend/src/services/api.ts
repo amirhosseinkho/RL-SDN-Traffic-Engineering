@@ -64,6 +64,7 @@ export const flowsApi = {
       elephant_flows: number;
       mice_flows: number;
       total_bandwidth_mbps: number;
+      avg_bandwidth_mbps: number;
     }>(`/flows/stats/summary${topologyId ? `?topology_id=${topologyId}` : ''}`),
   ryuFlows: () => request<{ flows: unknown }>('/flows/ryu'),
 };

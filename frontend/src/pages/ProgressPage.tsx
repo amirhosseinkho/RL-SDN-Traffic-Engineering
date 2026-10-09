@@ -20,7 +20,9 @@ export function ProgressPage() {
     try {
       const p = await rlApi.getProgress(id);
       setProgress(p);
-    } catch {}
+    } catch {
+      // Keep showing the previous progress if this request fails
+    }
     setLoading(false);
   };
 
