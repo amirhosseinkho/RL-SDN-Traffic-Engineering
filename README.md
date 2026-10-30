@@ -1,14 +1,16 @@
 # RL-SDN Traffic Engineering
 
 Reinforcement-learning agents (DQN and PPO) that choose routing paths for flows in a simulated
-software-defined network, plus a FastAPI backend and React dashboard around them.
+software-defined network, plus a FastAPI backend and React dashboard around them, and an emulation
+harness that runs the same policies on a Mininet network through an OpenFlow controller.
 
-> 🚧 **Work in progress.**
+> **Work in progress.**
 > The simulated environment, the agents, the backend and the dashboard run, and the backend tests
-> pass. In the [second experiment](experiments/second_experiment/README.md) (simulation only), DQN and
+> pass. In the [second experiment](experiments/second_experiment/README.md) (simulation), DQN and
 > PPO deliver more traffic than shortest-path, ECMP and random routing, but less than a simple
-> least-loaded heuristic. There is no integration with a live network (Ryu controller, OpenFlow
-> switches, Mininet) yet.
+> least-loaded heuristic. In the [Mininet experiment](experiments/mininet_experiment/README.md), the
+> same trained models run without retraining on an emulated network (Mininet, Open vSwitch,
+> os-ken (maintained Ryu fork)), and the ranking against the baselines mostly holds.
 > See [STATUS.md](STATUS.md) for exactly what was checked.
 
 [![CI](https://github.com/amirhosseinkho/RL-SDN-Traffic-Engineering/actions/workflows/ci.yml/badge.svg)](https://github.com/amirhosseinkho/RL-SDN-Traffic-Engineering/actions)
@@ -29,8 +31,12 @@ software-defined network, plus a FastAPI backend and React dashboard around them
    in the same simulation, on the same traffic.
 5. A FastAPI backend and a React dashboard let you create topologies, watch simulated link metrics,
    start training runs and compare agents.
+6. The `emulation/` package builds the same topology in Mininet, runs an os-ken controller app,
+   generates the simulator's traffic with iperf3, builds the agents' observation from measured port
+   and queue statistics, and installs each policy's routing as OpenFlow rules every epoch.
 
-All of this runs inside the simulation. No routing decision is installed on real or emulated switches.
+Training happens only in the simulation. The backend and dashboard do not install routes on
+switches; only the emulation runner does.
 
 ---
 
@@ -83,8 +89,21 @@ graph TB
 ```
 
 The metrics collector reads from Ryu when a controller is reachable. Otherwise it simulates the
-active topology, and that is what the Live Metrics page shows. There is no Mininet integration in
-the code.
+active topology, and that is what the Live Metrics page shows.
+
+The emulation is separate from the backend:
+
+```mermaid
+graph LR
+    RUN[emulation/runner.py<br/>policy + observation] -->|REST: paths| APP[os-ken app<br/>controller_app.py]
+    APP -->|OpenFlow 1.3 FlowMods| OVS[Open vSwitch<br/>Mininet spine-leaf]
+    OVS -->|port stats| APP
+    APP -->|REST: port stats| RUN
+    RUN -->|iperf3, ping, tc| OVS
+    ENV[SDNRoutingEnv<br/>traffic, agents] --> RUN
+```
+
+Details, decisions and the feature mapping are in [docs/emulation.md](docs/emulation.md).
 
 ---
 
@@ -101,7 +120,8 @@ RL-SDN-Traffic-Engineering/
 │   │   │   └── websocket.py        # /ws/metrics, /ws/training/{session_id}
 │   │   ├── controller/
 │   │   │   ├── ryu_controller.py   # Async HTTP client for Ryu's REST API
-│   │   │   └── openflow_handler.py # Ryu app (OpenFlow 1.3, L2 learning); runs under ryu-manager
+│   │   │   ├── flow_rules.py       # Per-flow OpenFlow rules: hops, cookies, update plan, FlowMods
+│   │   │   └── openflow_handler.py # os-ken/Ryu app (OpenFlow 1.3, L2 learning)
 │   │   ├── database/               # SQLAlchemy models, Pydantic schemas, session
 │   │   ├── monitoring/
 │   │   │   └── collector.py        # Metrics from Ryu, or from a simulation of the active topology
@@ -129,18 +149,21 @@ RL-SDN-Traffic-Engineering/
 │       ├── services/               # REST + WebSocket clients
 │       ├── store/                  # Zustand store
 │       └── types/
+├── emulation/                      # Mininet + os-ken: topology, controller app, runner, analysis
+│   └── tests/                      # unit tests; one Mininet integration test (root only)
 ├── experiments/
 │   ├── first_experiment/           # old reward (superseded): run.sh, results, write-up
 │   ├── second_experiment/          # per-flow reward: run.sh, results, write-up
+│   ├── mininet_experiment/         # the second experiment's policies on Mininet: run.sh, raw runs, write-up
 │   └── scripts/
 │       ├── train_dqn.py
 │       ├── train_ppo.py
 │       └── evaluate.py
 ├── models/                         # Trained weights are written here (git-ignored)
-├── docs/                           # architecture.md, training.md
+├── docs/                           # architecture.md, training.md, emulation.md
 ├── STATUS.md                       # What has been verified
 ├── docker-compose.yml
-└── .github/workflows/ci.yml
+└── .github/workflows/            # ci.yml; emulation.yml (manual, Mininet integration test)
 ```
 
 ---
@@ -176,9 +199,22 @@ Exercised by the tests, by running the scripts, or by using the dashboard (see [
 - **AI Copilot**: sends questions to an Ollama model, and falls back to fixed keyword-based answers
   (labelled `rule-based`) when Ollama is unavailable. Only the fallback has been tested.
 
+- **Emulation (Mininet)**: the spine-leaf topology in Mininet with Open vSwitch (OpenFlow 1.3),
+  shaped switch links (htb + netem), an os-ken (maintained Ryu fork) controller app with a REST
+  API, LLDP link discovery checked against the topology mapping, port statistics every second,
+  and per-flow IPv4 rules (cookies, egress-first updates, barriers). The runner drives any of
+  the six policies epoch by epoch, with iperf3 UDP traffic from the simulator's traffic model and
+  observations built from measurements. Paths are checked with tshark, and links can be
+  degraded at runtime (netem stress test). See [docs/emulation.md](docs/emulation.md).
+- **Path installation helpers**: `FlowManager.install_path` was run against Ryu 4.34's
+  `ofctl_rest` and fixed (it misread Ryu's hex datapath IDs and skipped the egress switch).
+
 ### Implemented but not verified
-- **Ryu integration**: an async client for Ryu's REST API (topology, flow and port stats) and an
-  OpenFlow 1.3 Ryu app with L2 learning and LLDP-based topology discovery. Not run against a controller.
+- **Ryu integration in the backend**: the async client for Ryu's REST API (topology, flow and port
+  stats) used by the metrics collector and flow routes. os-ken does not ship this REST API; only
+  `FlowManager` was run against Ryu 4.34.
+- **Mininet CI job** (`.github/workflows/emulation.yml`, manual trigger): not run; hosted runners
+  may not allow the Open vSwitch kernel module.
 - **Active Flows, Reports and AI Copilot pages** of the dashboard: their API endpoints were tested,
   but the pages themselves were not opened.
 - **Training-progress WebSocket** (`/ws/training/{session_id}`): the dashboard reads training
@@ -188,9 +224,10 @@ Exercised by the tests, by running the scripts, or by using the dashboard (see [
 ### Planned
 - Per-flow, per-path features in the observation, so the agents can see what the least-loaded
   heuristic uses (see the [second experiment](experiments/second_experiment/README.md)).
-- Installing the agents' routing decisions on switches (the `install_path` helpers exist but are
-  not called).
-- Emulating the network in Mininet and training/evaluating against it.
+- A simulator link model with per-direction capacity and downstream thinning (see the
+  [Mininet experiment](experiments/mininet_experiment/README.md#the-gap-between-simulator-and-emulation)).
+- Training or fine-tuning against the emulated network; TCP traffic in the emulation.
+- Installing routes from the backend API (`POST /flows/install` only records a flow).
 
 ---
 
@@ -259,11 +296,30 @@ python experiments/scripts/evaluate.py \
 A model can only be evaluated on the topology it was trained on, because the observation size
 depends on the topology.
 
+### Emulation (Mininet)
+
+Linux only (tested on WSL2 with Ubuntu 24.04), as root. Setup (Mininet, Open vSwitch, iperf3,
+tshark, os-ken, kernel modules) is in [docs/emulation.md](docs/emulation.md#environment-setup).
+Run from the repository root with the backend's virtualenv:
+
+```bash
+# One policy, 20 epochs of 10 s, on traffic seed 1000
+sudo ~/venvs/rlsdn/bin/python -m emulation.runner --policy dqn --model models/seed_0/dqn_model.pt \
+    --traffic-seed 1000 --epochs 20 --out results/emu_dqn
+
+# The whole Mininet experiment (39 runs, about 2.5 h), then its tables and figure
+sudo bash experiments/mininet_experiment/run.sh ~/venvs/rlsdn/bin/python models
+python -m emulation.analyze experiments/mininet_experiment
+```
+
+`--policy` is one of `shortest_path`, `ecmp`, `random`, `least_loaded`, `dqn`, `ppo`; `run.sh`
+expects `<models dir>/seed_{0,1,2}/{dqn,ppo}_model.pt`.
+
 ---
 
 ## Results
 
-All results so far are from the simulation, not a real or emulated network.
+### Simulation
 
 **[Second experiment](experiments/second_experiment/README.md)** (current reward). Spine-leaf
 (6 switches, 8 hosts), 300,000 training steps, 3 seeds per agent, 20 evaluation episodes on traffic
@@ -285,6 +341,35 @@ least-loaded heuristic, which knows each flow's candidate paths while the agents
 utilization-based reward, and a traffic model in which demand grew without bound during each
 episode, the trained agents scored no better than random routing. That led to the current reward
 and traffic model.
+
+### Emulation (Mininet)
+
+**[Mininet experiment](experiments/mininet_experiment/README.md).**
+- **Setup:** the second experiment's models (3 seeds each) and the four baselines, deployed without
+  retraining. The network is Mininet + Open vSwitch + os-ken (maintained Ryu fork), with switch
+  links scaled to 10 Mbit/s and the simulator's traffic as iperf3 UDP.
+- **Runs:** 3 traffic seeds × 20 epochs of 10 s each, 30 runs.
+- **Comparison:** the simulator column runs the same policies on the same traffic. Mean ± std
+  across runs.
+
+| Policy | Simulator, same traffic: delivered (%) | Emulation: delivered (%) | Emulation: p95 RTT (ms) | Emulation: FlowMods / epoch |
+|---|---|---|---|---|
+| Shortest path | 60.0 ± 32.2 | 68.0 ± 26.7 | 36.4 ± 12.8 | 0.0 |
+| ECMP (5-tuple hash) | 76.4 ± 20.5 | 79.1 ± 18.7 | 32.4 ± 9.0 | 1.9 |
+| Random | 66.3 ± 28.3 | 75.1 ± 21.7 | 62.1 ± 21.2 | 68.6 |
+| Least-loaded (heuristic) | 83.0 ± 18.7 | 87.6 ± 11.7 | 37.8 ± 2.8 | 24.3 |
+| DQN | 75.5 ± 20.9 | 80.7 ± 14.9 | 45.0 ± 11.9 | 22.1 |
+| PPO | 71.5 ± 21.8 | 75.5 ± 18.9 | 46.0 ± 12.1 | 14.1 |
+
+- **Ranking:** the rank correlation between simulator and emulation is 0.94. Least-loaded stays
+  first and shortest path last. DQN and ECMP swap places, but they are within 2 points of each
+  other in both settings, much less than the spread between traffic seeds.
+- **Delivered demand:** every policy delivers more in the emulation. The simulator shares one
+  link capacity between both directions and does not remove dropped traffic from downstream
+  links. Without these two simplifications, a fluid model matches the emulation to within 0.27
+  points on average.
+- **Stress test:** with a link degraded at runtime (+20 ms, 2% loss), neither least-loaded nor
+  DQN consistently moved traffic off it.
 
 ---
 
@@ -334,10 +419,17 @@ WS     /ws/training/{session_id}            Training progress stream
 ```bash
 cd backend
 pytest tests/
+
+cd ../emulation
+pytest                      # unit tests, no Mininet needed
+sudo <venv>/bin/python -m pytest -m mininet   # integration test: root, Mininet, OVS, iperf3, tshark, os-ken
 ```
 
-54 tests (44 unit, 10 integration on in-memory SQLite) with a 60% coverage gate. CI also runs
-`ruff` on the backend and `npm run lint`, `npm run typecheck` and `npm run build` on the frontend.
+68 backend tests (58 unit, 10 integration on in-memory SQLite) with a 60% coverage gate; one unit
+test is skipped unless os-ken is installed. 32 emulation tests; the Mininet integration test is
+skipped unless run as root on Linux with Mininet installed. CI runs `ruff` on the backend and
+`emulation/`, both test suites, and `npm run lint`, `npm run typecheck` and `npm run build` on the
+frontend.
 
 ---
 
@@ -348,7 +440,8 @@ pytest tests/
 | RL | PyTorch, Gymnasium, NumPy |
 | Graph / simulation | NetworkX |
 | Backend | Python 3.12, FastAPI, SQLAlchemy (async), asyncpg / aiosqlite |
-| Controller (not verified) | Ryu REST API client, OpenFlow 1.3 Ryu app |
+| Controller | os-ken (maintained Ryu fork) app for the emulation; Ryu REST API client in the backend (not verified against a live controller) |
+| Emulation | Mininet 2.3, Open vSwitch 3.3, tc htb + netem, iperf3, tshark |
 | Frontend | React 18, TypeScript, TailwindCSS, Zustand |
 | Charts | Recharts, D3.js |
 | AI Copilot | Ollama (optional), rule-based fallback |
