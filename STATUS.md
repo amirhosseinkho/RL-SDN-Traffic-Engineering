@@ -46,8 +46,8 @@ Legend: ✅ works · ⚠️ partial · ❌ broken / missing · ⏸ not verified
 | Training WebSocket | `/ws/training/{session_id}` | not used | ⏸ | The dashboard reads training progress from `GET /rl/sessions/{id}`. |
 | Training scripts | Train with seeds and an output directory | `train_dqn.py` / `train_ppo.py --seed N --output-dir DIR` | ✅ | Same seed gives identical weights, a different seed gives different weights (checked on DQN). |
 | Evaluation script | DQN, PPO, shortest path, ECMP, random, least-loaded | `evaluate.py --seed N` | ✅ | A model can only be evaluated on the topology it was trained on (the observation size depends on the topology). |
-| Emulation unit tests | Mapping, traffic/iperf3 parsing, tc parsing, observation, policies, tshark path check | `cd emulation && pytest` | ✅ 31/32, 1 skipped | 2026-10-30, Linux and Windows (Python 3.12.8, no Mininet). The skipped test is the Mininet integration test below. |
-| Emulation integration test | Topology + os-ken controller, install a path, 3 s of iperf3, tshark confirms the path | `sudo <venv>/bin/python -m pytest emulation/tests -m mininet` | ✅ 1/1 | 2026-10-30, as root in WSL2. |
+| Emulation unit tests | Mapping, traffic/iperf3 parsing, tc parsing, observation, policies, tshark path check, teardown of host processes | `cd emulation && pytest` | ✅ 34/35, 1 skipped | 2026-10-30 on Linux. The first 31 also on Windows (Python 3.12.8, no Mininet); the 3 teardown tests (`test_session.py`) were added later and run on Linux only. The skipped test is the Mininet integration test below. |
+| Emulation integration test | Topology + os-ken controller, install a path, 3 s of iperf3, tshark confirms the path | `sudo <venv>/bin/python -m pytest emulation/tests -m mininet` | ✅ 1/1 | 2026-10-30, as root in WSL2. After the teardown fix, `pgrep -c -x iperf3` is 0 after this test and after a 2-epoch runner run. |
 
 ### Frontend
 

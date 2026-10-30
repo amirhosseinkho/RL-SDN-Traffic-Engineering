@@ -426,7 +426,7 @@ sudo <venv>/bin/python -m pytest -m mininet   # integration test: root, Mininet,
 ```
 
 68 backend tests (58 unit, 10 integration on in-memory SQLite) with a 60% coverage gate; one unit
-test is skipped unless os-ken is installed. 32 emulation tests; the Mininet integration test is
+test is skipped unless os-ken is installed. 35 emulation tests; the Mininet integration test is
 skipped unless run as root on Linux with Mininet installed. CI runs `ruff` on the backend and
 `emulation/`, both test suites, and `npm run lint`, `npm run typecheck` and `npm run build` on the
 frontend.

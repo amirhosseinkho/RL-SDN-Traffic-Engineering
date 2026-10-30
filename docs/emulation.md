@@ -283,6 +283,19 @@ from the raw runs by `python -m emulation.analyze experiments/mininet_experiment
   the same decisions. Per-direction link capacity, with dropped traffic no longer loading
   downstream links, closes this to 0.27 points (mean absolute difference over 600 epochs).
 
+### Leftover iperf3 servers
+
+Until the teardown fix after the experiment, each run left its 32 `iperf3 -s` processes running,
+because `net.stop()` stops the host shells but not processes started in the hosts; 1,481 were
+running afterwards. They could not have affected the measurements:
+- Each one sat in the network namespace of a host that had already been stopped. All 303 of these
+  namespaces had only a loopback interface; none was in the root namespace.
+- They were idle in `select`, using 1.8% CPU in total over their lifetime.
+- Ports are bound per namespace, so the new servers of later runs bound without conflict. All 9,600
+  flow-epochs of the main runs got an iperf3 result.
+
+`EmulationSession` now kills every process in the hosts' network namespaces before `net.stop()`.
+
 ## Limitations
 
 - **Datapath**: Open vSwitch kernel datapath inside WSL2; links are veth pairs with htb + netem. No
