@@ -12,6 +12,7 @@ import httpx
 import networkx as nx
 
 from app.config import get_settings
+from app.controller import flow_rules
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -86,7 +87,7 @@ class RyuControllerClient:
             resp = await self.client.post("/stats/flowentry/add", json=payload)
             resp.raise_for_status()
             return True
-        except httpx.RequestError as e:
+        except httpx.HTTPError as e:
             logger.error("Failed to add flow to dpid=%d: %s", dpid, e)
             return False
 
@@ -96,7 +97,7 @@ class RyuControllerClient:
             resp = await self.client.post("/stats/flowentry/delete", json=payload)
             resp.raise_for_status()
             return True
-        except httpx.RequestError as e:
+        except httpx.HTTPError as e:
             logger.error("Failed to delete flow from dpid=%d: %s", dpid, e)
             return False
 
@@ -167,8 +168,8 @@ class TopologyManager:
             self.graph.add_edge(
                 src,
                 dst,
-                src_port=link["src"]["port_no"],
-                dst_port=link["dst"]["port_no"],
+                src_port=_parse_hex(link["src"]["port_no"]),
+                dst_port=_parse_hex(link["dst"]["port_no"]),
             )
         for host in self._hosts:
             hname = f"h_{host['mac'].replace(':', '')}"
@@ -176,7 +177,7 @@ class TopologyManager:
             for port in host.get("port", []):
                 sw_node = f"s{port['dpid']}"
                 if sw_node in self.graph:
-                    self.graph.add_edge(sw_node, hname, src_port=port["port_no"])
+                    self.graph.add_edge(sw_node, hname, src_port=_parse_hex(port["port_no"]))
 
     def get_shortest_path(self, src: str, dst: str) -> list[str] | None:
         try:
@@ -201,66 +202,61 @@ class TopologyManager:
 
 
 class FlowManager:
-    """Manages OpenFlow rules through the Ryu controller."""
+    """Manages OpenFlow rules through the Ryu controller's ofctl_rest API.
+
+    Rules come from app.controller.flow_rules: they match the flow's IPv4 source and destination,
+    are permanent, carry a per-flow cookie and are sent egress switch first. (ofctl_rest sends no
+    barrier between them, so the order is best effort; emulation/controller_app.py adds barriers.)
+    """
 
     def __init__(self, topology_mgr: TopologyManager) -> None:
         self.topo = topology_mgr
 
+    def _hops(self, path: list[str], egress_port: int | None) -> list[flow_rules.Hop]:
+        graph = self.topo.graph
+        dpids = {
+            n: _parse_hex(d["dpid"]) for n, d in graph.nodes(data=True) if d.get("node_type") == "switch"
+        }
+        ports = {(u, v): d["src_port"] for u, v, d in graph.edges(data=True) if "src_port" in d}
+        # Ryu only discovers hosts that have sent traffic to the controller, so a path may end
+        # at the egress switch; egress_port is then the port towards the destination host
+        return flow_rules.path_hops(path, dpids, ports, egress_port)
+
     async def install_path(
         self,
         path: list[str],
-        src_mac: str,
-        dst_mac: str,
-        priority: int = 10,
+        src_ip: str,
+        dst_ip: str,
+        flow_id: int = 0,
+        egress_port: int | None = None,
+        priority: int = flow_rules.PATH_PRIORITY,
     ) -> bool:
-        """Install forwarding rules along a path."""
+        """Install forwarding rules for src_ip -> dst_ip along a path of TopologyManager nodes."""
+        rules = flow_rules.path_rules(
+            self._hops(path, egress_port),
+            flow_rules.ipv4_match(src_ip, dst_ip),
+            flow_rules.flow_cookie(flow_id),
+            priority,
+        )
         async with RyuControllerClient() as ryu:
-            for i in range(len(path) - 1):
-                node = path[i]
-                next_node = path[i + 1]
-
-                if not self.topo.graph.has_node(node):
-                    continue
-                if self.topo.graph.nodes[node].get("node_type") != "switch":
-                    continue
-
-                dpid_str = node.lstrip("s")
-                if not dpid_str.isdigit():
-                    continue
-                dpid = int(dpid_str)
-
-                edge_data = self.topo.graph.get_edge_data(node, next_node)
-                if not edge_data:
-                    continue
-                out_port = edge_data.get("src_port", 1)
-
-                flow_entry = {
-                    "priority": priority,
-                    "match": {
-                        "dl_src": src_mac,
-                        "dl_dst": dst_mac,
-                    },
-                    "actions": [{"type": "OUTPUT", "port": out_port}],
-                    "idle_timeout": 300,
-                    "hard_timeout": 0,
-                }
-                success = await ryu.add_flow(dpid, flow_entry)
-                if not success:
-                    logger.error("Failed to install flow on dpid=%d", dpid)
+            for rule in rules:
+                entry = rule.to_ofctl_rest()
+                if not await ryu.add_flow(entry.pop("dpid"), entry):
+                    logger.error("Failed to install flow on dpid=%d", rule.dpid)
                     return False
         return True
 
-    async def remove_path(self, src_mac: str, dst_mac: str, path: list[str]) -> bool:
+    async def remove_path(
+        self, path: list[str], src_ip: str, dst_ip: str, egress_port: int | None = None
+    ) -> bool:
+        match = flow_rules.ipv4_match(src_ip, dst_ip)
         async with RyuControllerClient() as ryu:
-            for node in path:
-                if not self.topo.graph.has_node(node):
-                    continue
-                if self.topo.graph.nodes[node].get("node_type") != "switch":
-                    continue
-                dpid_str = node.lstrip("s")
-                if not dpid_str.isdigit():
-                    continue
-                dpid = int(dpid_str)
-                match = {"dl_src": src_mac, "dl_dst": dst_mac}
-                await ryu.delete_flow(dpid, match)
+            for hop in self._hops(path, egress_port):
+                await ryu.delete_flow(hop.dpid, dict(match))
         return True
+
+
+def _parse_hex(value: int | str) -> int:
+    """Ryu's topology REST API reports dpids and port numbers as hex strings
+    ("00000000000000c9" = dpid 201, "00000003" = port 3)."""
+    return value if isinstance(value, int) else int(value, 16)
