@@ -1,0 +1,215 @@
+{
+  "capacity_scale": 0.05,
+  "max_queue_pkts": 25,
+  "ip_prefix_len": 16,
+  "switches": {
+    "spine1": {
+      "name": "spine1",
+      "mininet": "spine1",
+      "dpid": 101,
+      "dpid_hex": "0000000000000065"
+    },
+    "spine2": {
+      "name": "spine2",
+      "mininet": "spine2",
+      "dpid": 102,
+      "dpid_hex": "0000000000000066"
+    },
+    "leaf1": {
+      "name": "leaf1",
+      "mininet": "leaf1",
+      "dpid": 201,
+      "dpid_hex": "00000000000000c9"
+    },
+    "leaf2": {
+      "name": "leaf2",
+      "mininet": "leaf2",
+      "dpid": 202,
+      "dpid_hex": "00000000000000ca"
+    },
+    "leaf3": {
+      "name": "leaf3",
+      "mininet": "leaf3",
+      "dpid": 203,
+      "dpid_hex": "00000000000000cb"
+    },
+    "leaf4": {
+      "name": "leaf4",
+      "mininet": "leaf4",
+      "dpid": 204,
+      "dpid_hex": "00000000000000cc"
+    }
+  },
+  "hosts": {
+    "h1": {
+      "name": "h1",
+      "mininet": "h1",
+      "ip": "192.168.1.2",
+      "mac": "00:00:00:00:00:01",
+      "switch": "leaf1",
+      "switch_port": 3,
+      "intf": "h1-eth0"
+    },
+    "h2": {
+      "name": "h2",
+      "mininet": "h2",
+      "ip": "192.168.1.3",
+      "mac": "00:00:00:00:00:02",
+      "switch": "leaf1",
+      "switch_port": 4,
+      "intf": "h2-eth0"
+    },
+    "h3": {
+      "name": "h3",
+      "mininet": "h3",
+      "ip": "192.168.2.4",
+      "mac": "00:00:00:01:00:03",
+      "switch": "leaf2",
+      "switch_port": 3,
+      "intf": "h3-eth0"
+    },
+    "h4": {
+      "name": "h4",
+      "mininet": "h4",
+      "ip": "192.168.2.5",
+      "mac": "00:00:00:01:00:04",
+      "switch": "leaf2",
+      "switch_port": 4,
+      "intf": "h4-eth0"
+    },
+    "h5": {
+      "name": "h5",
+      "mininet": "h5",
+      "ip": "192.168.3.6",
+      "mac": "00:00:00:02:00:05",
+      "switch": "leaf3",
+      "switch_port": 3,
+      "intf": "h5-eth0"
+    },
+    "h6": {
+      "name": "h6",
+      "mininet": "h6",
+      "ip": "192.168.3.7",
+      "mac": "00:00:00:02:00:06",
+      "switch": "leaf3",
+      "switch_port": 4,
+      "intf": "h6-eth0"
+    },
+    "h7": {
+      "name": "h7",
+      "mininet": "h7",
+      "ip": "192.168.4.8",
+      "mac": "00:00:00:03:00:07",
+      "switch": "leaf4",
+      "switch_port": 3,
+      "intf": "h7-eth0"
+    },
+    "h8": {
+      "name": "h8",
+      "mininet": "h8",
+      "ip": "192.168.4.9",
+      "mac": "00:00:00:03:00:08",
+      "switch": "leaf4",
+      "switch_port": 4,
+      "intf": "h8-eth0"
+    }
+  },
+  "links": [
+    {
+      "src": "spine1",
+      "dst": "leaf1",
+      "src_port": 1,
+      "dst_port": 1,
+      "src_intf": "spine1-eth1",
+      "dst_intf": "leaf1-eth1",
+      "sim_bandwidth_mbps": 200.0,
+      "bandwidth_mbps": 10.0,
+      "delay_ms": 5.0,
+      "max_queue_pkts": 25
+    },
+    {
+      "src": "spine1",
+      "dst": "leaf2",
+      "src_port": 2,
+      "dst_port": 1,
+      "src_intf": "spine1-eth2",
+      "dst_intf": "leaf2-eth1",
+      "sim_bandwidth_mbps": 200.0,
+      "bandwidth_mbps": 10.0,
+      "delay_ms": 5.0,
+      "max_queue_pkts": 25
+    },
+    {
+      "src": "spine1",
+      "dst": "leaf3",
+      "src_port": 3,
+      "dst_port": 1,
+      "src_intf": "spine1-eth3",
+      "dst_intf": "leaf3-eth1",
+      "sim_bandwidth_mbps": 200.0,
+      "bandwidth_mbps": 10.0,
+      "delay_ms": 5.0,
+      "max_queue_pkts": 25
+    },
+    {
+      "src": "spine1",
+      "dst": "leaf4",
+      "src_port": 4,
+      "dst_port": 1,
+      "src_intf": "spine1-eth4",
+      "dst_intf": "leaf4-eth1",
+      "sim_bandwidth_mbps": 200.0,
+      "bandwidth_mbps": 10.0,
+      "delay_ms": 5.0,
+      "max_queue_pkts": 25
+    },
+    {
+      "src": "spine2",
+      "dst": "leaf1",
+      "src_port": 1,
+      "dst_port": 2,
+      "src_intf": "spine2-eth1",
+      "dst_intf": "leaf1-eth2",
+      "sim_bandwidth_mbps": 200.0,
+      "bandwidth_mbps": 10.0,
+      "delay_ms": 5.0,
+      "max_queue_pkts": 25
+    },
+    {
+      "src": "spine2",
+      "dst": "leaf2",
+      "src_port": 2,
+      "dst_port": 2,
+      "src_intf": "spine2-eth2",
+      "dst_intf": "leaf2-eth2",
+      "sim_bandwidth_mbps": 200.0,
+      "bandwidth_mbps": 10.0,
+      "delay_ms": 5.0,
+      "max_queue_pkts": 25
+    },
+    {
+      "src": "spine2",
+      "dst": "leaf3",
+      "src_port": 3,
+      "dst_port": 2,
+      "src_intf": "spine2-eth3",
+      "dst_intf": "leaf3-eth2",
+      "sim_bandwidth_mbps": 200.0,
+      "bandwidth_mbps": 10.0,
+      "delay_ms": 5.0,
+      "max_queue_pkts": 25
+    },
+    {
+      "src": "spine2",
+      "dst": "leaf4",
+      "src_port": 4,
+      "dst_port": 2,
+      "src_intf": "spine2-eth4",
+      "dst_intf": "leaf4-eth2",
+      "sim_bandwidth_mbps": 200.0,
+      "bandwidth_mbps": 10.0,
+      "delay_ms": 5.0,
+      "max_queue_pkts": 25
+    }
+  ]
+}

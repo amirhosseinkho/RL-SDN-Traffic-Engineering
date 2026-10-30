@@ -1,0 +1,49 @@
+epoch  0 delivered  68.9% (sim  66.0%) churn  66 cpu  2.3% wall 10.4s
+epoch  1 delivered  84.9% (sim  80.0%) churn  76 cpu  2.1% wall 10.4s
+epoch  2 delivered  86.0% (sim  80.6%) churn  84 cpu  2.3% wall 10.5s
+epoch  3 delivered  88.5% (sim  87.0%) churn  60 cpu  2.9% wall 11.3s
+epoch  4 delivered  80.0% (sim  79.3%) churn  62 cpu  2.7% wall 10.4s
+epoch  5 delivered  88.7% (sim  86.6%) churn  66 cpu  2.2% wall 10.4s
+epoch  6 delivered  93.4% (sim  71.5%) churn  62 cpu  2.5% wall 10.5s
+epoch  7 delivered  77.7% (sim  74.7%) churn  74 cpu  2.3% wall 10.4s
+epoch  8 delivered  53.6% (sim  50.8%) churn  54 cpu  1.9% wall 10.4s
+epoch  9 delivered  60.0% (sim  62.2%) churn  74 cpu  2.1% wall 10.4s
+epoch 10 delivered  69.1% (sim  60.4%) churn  70 cpu  2.4% wall 10.5s
+epoch 11 delivered  68.7% (sim  66.9%) churn  50 cpu  2.2% wall 10.5s
+epoch 12 delivered  61.9% (sim  59.8%) churn  74 cpu  2.3% wall 10.5s
+epoch 13 delivered  73.2% (sim  68.7%) churn  86 cpu  2.8% wall 10.5s
+epoch 14 delivered  80.0% (sim  68.5%) churn  74 cpu  2.9% wall 10.3s
+epoch 15 delivered  53.2% (sim  49.9%) churn  74 cpu  2.4% wall 10.5s
+epoch 16 delivered  51.0% (sim  47.3%) churn  86 cpu  2.4% wall 10.5s
+epoch 17 delivered  48.6% (sim  45.3%) churn  56 cpu  4.9% wall 10.5s
+epoch 18 delivered  66.9% (sim  56.6%) churn  76 cpu  2.7% wall 10.6s
+epoch 19 delivered  77.2% (sim  64.0%) churn  76 cpu  2.5% wall 10.5s
+{
+  "epochs": 20,
+  "delivered_pct": 71.58296025289397,
+  "sim_predicted_delivered_pct": 66.31332118001458,
+  "sim_predicted_flow_latency_ms": 44.75215887820063,
+  "loss_pct": 29.74002265519706,
+  "rtt_mean_ms": 33.945999558531376,
+  "rtt_p95_ms": 57.0,
+  "ping_loss_pct": 14.949937421777227,
+  "flowmods_per_epoch": 70.0,
+  "flowmods_match_prediction": true,
+  "cpu_mean_pct": 2.530849219899099,
+  "cpu_max_pct": 9.917355371900827,
+  "iperf_errors": 0,
+  "obs_dim": 67,
+  "obs_min": 0.0,
+  "obs_max": 1.0,
+  "wall_s": 210.13611769676208,
+  "verified": {
+    "ok": 16,
+    "flows": 16,
+    "pcap_bytes": 2932304
+  },
+  "policy": "random",
+  "traffic_seed": 1000,
+  "model": null,
+  "capacity_scale": 0.05,
+  "epoch_seconds": 10.0
+}

@@ -1,0 +1,29 @@
+{
+  "epochs": 20,
+  "delivered_pct": 75.80913871548456,
+  "sim_predicted_delivered_pct": 73.98551608073497,
+  "sim_predicted_flow_latency_ms": 29.688658090464777,
+  "loss_pct": 24.840222831908445,
+  "rtt_mean_ms": 24.950135375846102,
+  "rtt_p95_ms": 38.5,
+  "ping_loss_pct": 12.171464330413018,
+  "flowmods_per_epoch": 1.5,
+  "flowmods_match_prediction": true,
+  "cpu_mean_pct": 3.302436127036735,
+  "cpu_max_pct": 25.843621399176953,
+  "iperf_errors": 0,
+  "obs_dim": 67,
+  "obs_min": 0.0,
+  "obs_max": 1.0,
+  "wall_s": 208.6559317111969,
+  "verified": {
+    "ok": 16,
+    "flows": 16,
+    "pcap_bytes": 1715024
+  },
+  "policy": "ecmp",
+  "traffic_seed": 1000,
+  "model": null,
+  "capacity_scale": 0.05,
+  "epoch_seconds": 10.0
+}

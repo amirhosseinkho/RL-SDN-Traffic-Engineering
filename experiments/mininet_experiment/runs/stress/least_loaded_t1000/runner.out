@@ -1,0 +1,45 @@
+epoch  0 delivered  98.5% (sim  98.6%) churn  48 cpu  2.4% wall 10.5s
+epoch  1 delivered 100.0% (sim 100.0%) churn   6 cpu  2.3% wall 10.5s
+epoch  2 delivered 100.0% (sim 100.0%) churn   0 cpu  2.6% wall 10.5s
+epoch  3 delivered  99.6% (sim  99.7%) churn  18 cpu  2.4% wall 10.3s
+epoch  4 delivered 100.0% (sim 100.0%) churn  54 cpu  2.1% wall 10.2s
+epoch  5 delivered  99.2% (sim 100.0%) churn  54 cpu  1.9% wall 10.5s
+epoch  6 delivered  99.1% (sim 100.0%) churn  18 cpu  2.1% wall 10.7s
+epoch  7 delivered  99.1% (sim 100.0%) churn  24 cpu  2.1% wall 10.8s
+epoch  8 delivered  69.6% (sim  75.0%) churn  42 cpu  2.2% wall 10.5s
+epoch  9 delivered  72.8% (sim  77.5%) churn  12 cpu  2.1% wall 10.5s
+epoch 10 delivered  78.4% (sim  82.6%) churn   6 cpu  2.2% wall 10.4s
+epoch 11 delivered  78.8% (sim  84.1%) churn  24 cpu  2.2% wall 10.8s
+epoch 12 delivered  69.7% (sim  72.3%) churn  30 cpu  2.3% wall 10.7s
+epoch 13 delivered  74.5% (sim  77.5%) churn  12 cpu  2.2% wall 10.8s
+epoch 14 delivered  79.0% (sim  80.7%) churn  18 cpu  2.3% wall 11.0s
+epoch 15 delivered  73.0% (sim  71.5%) churn  72 cpu  2.2% wall 10.4s
+epoch 16 delivered  75.5% (sim  74.3%) churn  18 cpu  1.8% wall 10.8s
+epoch 17 delivered  78.4% (sim  77.7%) churn  30 cpu  1.9% wall 10.9s
+epoch 18 delivered  81.2% (sim  80.9%) churn  24 cpu  2.5% wall 10.9s
+epoch 19 delivered  81.1% (sim  80.4%) churn  24 cpu  2.4% wall 10.7s
+{
+  "epochs": 20,
+  "delivered_pct": 85.36465945298467,
+  "sim_predicted_delivered_pct": 86.64030436879455,
+  "sim_predicted_flow_latency_ms": 27.843920652592296,
+  "loss_pct": 16.21686723003573,
+  "rtt_mean_ms": 29.628379094739707,
+  "rtt_p95_ms": 60.3,
+  "ping_loss_pct": 7.922403003754697,
+  "flowmods_per_epoch": 26.7,
+  "flowmods_match_prediction": true,
+  "cpu_mean_pct": 2.2065787043998313,
+  "cpu_max_pct": 5.877483443708609,
+  "iperf_errors": 0,
+  "obs_dim": 67,
+  "obs_min": 0.0,
+  "obs_max": 1.0,
+  "wall_s": 212.14701128005981,
+  "verified": null,
+  "policy": "least_loaded",
+  "traffic_seed": 1000,
+  "model": null,
+  "capacity_scale": 0.05,
+  "epoch_seconds": 10.0
+}

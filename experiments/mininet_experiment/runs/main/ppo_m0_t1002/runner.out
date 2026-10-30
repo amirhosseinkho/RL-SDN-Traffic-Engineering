@@ -1,0 +1,47 @@
+/home/amirhossein/RL-SDN-Traffic-Engineering/backend/app/rl/agents/ppo_agent.py:316: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  checkpoint = torch.load(path, map_location=self.device)
+epoch  0 delivered  90.7% (sim  73.0%) churn  36 cpu  2.6% wall 10.4s
+epoch  1 delivered  67.5% (sim  57.6%) churn  44 cpu  2.2% wall 10.4s
+epoch  2 delivered  69.8% (sim  54.8%) churn  56 cpu  2.6% wall 10.4s
+epoch  3 delivered  85.9% (sim  63.6%) churn  60 cpu  2.7% wall 10.4s
+epoch  4 delivered  59.2% (sim  49.1%) churn  60 cpu  2.3% wall 10.4s
+epoch  5 delivered  41.4% (sim  40.1%) churn  48 cpu  2.1% wall 10.4s
+epoch  6 delivered  43.4% (sim  42.8%) churn  12 cpu  2.0% wall 10.4s
+epoch  7 delivered  42.9% (sim  42.8%) churn   0 cpu  1.9% wall 10.5s
+epoch  8 delivered  43.5% (sim  43.2%) churn   6 cpu  1.9% wall 10.6s
+epoch  9 delivered  46.7% (sim  44.8%) churn   0 cpu  2.0% wall 10.5s
+epoch 10 delivered  44.6% (sim  43.2%) churn   6 cpu  1.9% wall 10.5s
+epoch 11 delivered  44.2% (sim  43.8%) churn   6 cpu  2.0% wall 10.5s
+epoch 12 delivered  46.1% (sim  26.7%) churn   6 cpu  2.5% wall 10.4s
+epoch 13 delivered  43.2% (sim  39.8%) churn  56 cpu  2.3% wall 10.7s
+epoch 14 delivered  62.6% (sim  41.3%) churn  42 cpu  2.7% wall 10.4s
+epoch 15 delivered  52.4% (sim  40.1%) churn  36 cpu  2.7% wall 10.4s
+epoch 16 delivered  55.5% (sim  39.3%) churn  48 cpu  2.6% wall 10.4s
+epoch 17 delivered  59.5% (sim  46.7%) churn  48 cpu  2.7% wall 10.4s
+epoch 18 delivered  55.6% (sim  40.5%) churn  54 cpu  2.7% wall 10.4s
+epoch 19 delivered  54.3% (sim  43.6%) churn  48 cpu  2.9% wall 10.4s
+{
+  "epochs": 20,
+  "delivered_pct": 55.44788347437638,
+  "sim_predicted_delivered_pct": 45.843051380563146,
+  "sim_predicted_flow_latency_ms": 42.70162027865657,
+  "loss_pct": 44.8076967841448,
+  "rtt_mean_ms": 29.102933663596257,
+  "rtt_p95_ms": 55.7,
+  "ping_loss_pct": 19.155193992490616,
+  "flowmods_per_epoch": 33.6,
+  "flowmods_match_prediction": true,
+  "cpu_mean_pct": 2.371306326942685,
+  "cpu_max_pct": 4.225352112676061,
+  "iperf_errors": 0,
+  "obs_dim": 67,
+  "obs_min": 0.0,
+  "obs_max": 1.0,
+  "wall_s": 208.9099476337433,
+  "verified": null,
+  "policy": "ppo",
+  "traffic_seed": 1002,
+  "model": "/home/amirhossein/second_experiment_models/seed_0/ppo_model.pt",
+  "capacity_scale": 0.05,
+  "epoch_seconds": 10.0
+}

@@ -1,0 +1,15 @@
+{
+  "policy": "dqn",
+  "model": "/home/amirhossein/second_experiment_models/seed_1/dqn_model.pt",
+  "traffic_seed": 1000,
+  "epochs": 20,
+  "epoch_seconds": 10.0,
+  "scale": 0.05,
+  "queue": 25,
+  "out": "experiments/mininet_experiment/runs/main/dqn_m1_t1000",
+  "capture_epoch": null,
+  "stress_link": null,
+  "stress_from_epoch": 5,
+  "stress_extra_delay_ms": 20.0,
+  "stress_loss_pct": 2.0
+}
