@@ -60,10 +60,10 @@ Legend: ✅ works · ⚠️ partial · ❌ broken / missing · ⏸ not verified
 | `docker-compose.yml` | `docker compose config --quiet` | ✅ | Valid (warning: the `version` key is obsolete). |
 | Docker images | Build | ⏸ | Docker Desktop was not running. |
 | GitHub Actions | Run on this branch | ⏸ | Not pushed yet. The commands CI runs were run locally (see above). |
-| Ryu dependency | `pip install ryu` on Python 3.12 | ❌ | `ryu-4.34` fails to build (setuptools incompatibility). Ryu needs its own, older Python environment; docker-compose uses the `osrg/ryu` image. |
-| Live Ryu / OpenFlow | | ⏸ | No Ryu controller or switches were available. When Ryu is unreachable, the metrics collector simulates the active topology. |
-| Mininet | Search for any use | ❌ | No code uses Mininet. |
-| RL → switches | | ❌ | `install_path` (in `openflow_handler.py` and `ryu_controller.py`) is never called, and `POST /flows/install` only records a flow in the database. |
+| Ryu dependency / controller | `apt install python3-os-ken` (os-ken 2.8.1, the maintained Ryu fork, system Python 3.12); Ryu 4.34 in a separate Python 3.9 env (`conda create -p ~/venvs/ryu39 python=3.9`, `pip install setuptools<58 pbr`, `pip install --no-build-isolation ryu==4.34 eventlet==0.30.2`) | ✅ | 2026-10-30. `pip install ryu` on Python 3.12 still fails. The emulation runs on **os-ken**; Ryu 4.34 was installed only to test `FlowManager` against Ryu's `ofctl_rest`, which os-ken does not ship (neither the apt package nor PyPI `os-ken` 4.2.2 contains `ofctl_rest`, `rest_topology` or any wsgi app). `openflow_handler.py` and `emulation/controller_app.py` import os-ken or Ryu through a small shim. |
+| Live os-ken / OpenFlow | `sudo python -m emulation.milestone --out experiments/mininet_experiment/phase1` | ✅ | os-ken app `emulation/controller_app.py` with 6 OVS switches (OpenFlow 1.3, kernel datapath) in Mininet. All 6 switches connect; LLDP discovery finds the 16 directed links with exactly the mapped ports; port statistics are collected every second. Paths installed through its REST API appear in `ovs-ofctl dump-flows` on every hop, and tshark on all 8 spine interfaces shows 4/4 flows only on their installed paths, before and after a path change (old spine's rules deleted). Evidence: `experiments/mininet_experiment/phase1/`. The metrics collector in the backend still reads only Ryu's REST API (not tested against a live controller). |
+| Mininet | `sudo mn --link tc --test pingall`; `emulation/topology.py` builds the spine-leaf network from the simulator's `TopologyDefinition` | ✅ | 2026-10-30, Mininet 2.3.0, Open vSwitch 3.3.9, WSL2 kernel 6.18.54.1 (modules `openvswitch`, `sch_htb`, `sch_netem`, `sch_tbf`). pingall: 0% dropped. Switch links are `TCLink` (htb rate + netem delay/limit; `phase1/tc_spine1-eth1.txt`). The experiment on it is a later phase. |
+| RL → switches | `FlowManager.install_path` against Ryu 4.34 `ofctl_rest` + `rest_topology` (`phase1/flowmanager_*.txt`) | ⚠️ | Unchanged, it installed nothing: Ryu reports dpids and ports as hex strings, which it misread (spine1 = `0000000000000065` became dpid 65, leaf dpids were skipped), it skipped the egress switch, and a 404 escaped as an exception. Fixed (hex parsing, IPv4 match, permanent rules, cookies, egress-first via `app/controller/flow_rules.py`): rules on all 3 hops, ping 3/3. Routing decisions of the agents are not yet installed (later phase). `POST /flows/install` still only records a flow in the database. |
 
 ## Known issues
 
@@ -74,7 +74,7 @@ Legend: ✅ works · ⚠️ partial · ❌ broken / missing · ⏸ not verified
    link utilization in percent, not Mbps. The dashboard labels it correctly, but the column names are wrong.
 3. During PPO training an episode is `n_steps` long (2048 by default), while evaluation uses
    200-step episodes.
-4. Ryu does not install on Python 3.12, and nothing connects the agents to a live network.
+4. Ryu 4.34 does not install on Python 3.12 (os-ken, the maintained fork, is used instead). The agents' decisions are not yet installed on switches.
 5. Docker images have not been built.
 
 ## Experiments

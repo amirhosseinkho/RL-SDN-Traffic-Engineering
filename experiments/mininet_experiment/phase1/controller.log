@@ -1,0 +1,50 @@
+2 RLock(s) were not greened, to fix this error make sure you run eventlet.monkey_patch() before importing any other modules.
+loading app /home/amirhossein/RL-SDN-Traffic-Engineering/emulation/controller_app.py
+loading app os_ken.app.ofctl.service
+loading app os_ken.controller.ofp_handler
+loading app os_ken.topology.switches
+loading app os_ken.controller.ofp_handler
+instantiating app /home/amirhossein/RL-SDN-Traffic-Engineering/emulation/controller_app.py of EmulationController
+REST API on port 8080
+instantiating app os_ken.app.ofctl.service of OfctlService
+instantiating app os_ken.controller.ofp_handler of OFPHandler
+instantiating app os_ken.topology.switches of Switches
+(27667) wsgi starting up on http://0.0.0.0:8080
+(27667) accepted ('127.0.0.1', 48608)
+127.0.0.1 - - [30/Oct/2026 13:41:13] "GET /health HTTP/1.1" 200 155 0.000177
+switch connected: dpid=201
+switch connected: dpid=101
+switch connected: dpid=102
+switch connected: dpid=203
+switch connected: dpid=204
+switch connected: dpid=202
+(27667) accepted ('127.0.0.1', 48620)
+127.0.0.1 - - [30/Oct/2026 13:41:14] "GET /topology HTTP/1.1" 200 1285 0.000383
+(27667) accepted ('127.0.0.1', 48636)
+127.0.0.1 - - [30/Oct/2026 13:41:14] "POST /paths HTTP/1.1" 200 203 0.001648
+(27667) accepted ('127.0.0.1', 48648)
+127.0.0.1 - - [30/Oct/2026 13:41:14] "POST /paths HTTP/1.1" 200 203 0.001409
+(27667) accepted ('127.0.0.1', 48656)
+127.0.0.1 - - [30/Oct/2026 13:41:14] "POST /paths HTTP/1.1" 200 203 0.001345
+(27667) accepted ('127.0.0.1', 48666)
+127.0.0.1 - - [30/Oct/2026 13:41:14] "POST /paths HTTP/1.1" 200 204 0.001293
+(27667) accepted ('127.0.0.1', 48670)
+127.0.0.1 - - [30/Oct/2026 13:41:14] "POST /paths HTTP/1.1" 200 204 0.002208
+(27667) accepted ('127.0.0.1', 48676)
+127.0.0.1 - - [30/Oct/2026 13:41:14] "POST /paths HTTP/1.1" 200 204 0.002023
+(27667) accepted ('127.0.0.1', 48684)
+127.0.0.1 - - [30/Oct/2026 13:41:14] "POST /paths HTTP/1.1" 200 204 0.000526
+(27667) accepted ('127.0.0.1', 48700)
+127.0.0.1 - - [30/Oct/2026 13:41:14] "POST /paths HTTP/1.1" 200 204 0.000569
+(27667) accepted ('127.0.0.1', 36864)
+127.0.0.1 - - [30/Oct/2026 13:41:19] "POST /paths HTTP/1.1" 200 204 0.002539
+(27667) accepted ('127.0.0.1', 36880)
+127.0.0.1 - - [30/Oct/2026 13:41:19] "POST /paths HTTP/1.1" 200 204 0.001562
+(27667) accepted ('127.0.0.1', 45000)
+127.0.0.1 - - [30/Oct/2026 13:41:25] "GET /paths HTTP/1.1" 200 592 0.000134
+switch disconnected: dpid=201
+switch disconnected: dpid=102
+switch disconnected: dpid=203
+switch disconnected: dpid=101
+switch disconnected: dpid=202
+switch disconnected: dpid=204
