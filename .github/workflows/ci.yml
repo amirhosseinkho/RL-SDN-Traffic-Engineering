@@ -34,6 +34,9 @@ jobs:
         working-directory: backend
         run: ruff check app/ --select=E,F,W,I --ignore=E501
 
+      - name: Ruff lint (emulation)
+        run: ruff check emulation/ --select=E,F,W,I --ignore=E501
+
       - name: Type check
         working-directory: backend
         run: mypy app/ --ignore-missing-imports --no-strict-optional
@@ -62,6 +65,12 @@ jobs:
         run: |
           pytest tests/ -v --tb=short \
             --cov=app --cov-report=xml --cov-report=term-missing
+
+      # Emulation unit tests need no Mininet; the Mininet integration test is skipped here
+      # (it runs in .github/workflows/emulation.yml)
+      - name: Run emulation unit tests
+        working-directory: emulation
+        run: pytest -v --tb=short
 
       - name: Upload coverage
         uses: codecov/codecov-action@v4
