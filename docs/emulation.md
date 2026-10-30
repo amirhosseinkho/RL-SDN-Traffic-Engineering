@@ -45,7 +45,8 @@ Modules (all under `emulation/`, none imported by the backend):
 | `topology.py` | Mininet, root | Builds the network from the mapping |
 | `controller_app.py` | os-ken or Ryu | OpenFlow 1.3 app: drop table-miss, path rules, port stats, REST API |
 | `controller_client.py` | stdlib | REST client; starts `osken-manager` |
-| `session.py` | Mininet, root | Controller + network lifecycle; checks that LLDP discovery matches the mapping |
+| `session.py` | Mininet, root | Controller + network lifecycle; checks that LLDP discovery matches the mapping; on exit, stops every process started in the hosts |
+| `procs.py` | stdlib | Finds the processes in the hosts' network namespaces and stops them (used by `session.py`) |
 | `traffic.py` | Mininet for running, parsing is pure | iperf3 UDP flows and pings |
 | `verify_paths.py` | tshark for capturing, checking is pure | Checks captured packets against installed paths |
 | `milestone.py` | everything | Controller milestone (phase 1) |
@@ -294,7 +295,8 @@ running afterwards. They could not have affected the measurements:
 - Ports are bound per namespace, so the new servers of later runs bound without conflict. All 9,600
   flow-epochs of the main runs got an iperf3 result.
 
-`EmulationSession` now kills every process in the hosts' network namespaces before `net.stop()`.
+`EmulationSession` now kills every process in the hosts' network namespaces before `net.stop()`
+(`emulation/procs.py`).
 
 ## Limitations
 

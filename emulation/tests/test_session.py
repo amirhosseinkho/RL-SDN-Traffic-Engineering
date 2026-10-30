@@ -6,7 +6,7 @@ import time
 
 import pytest
 
-from emulation.session import kill_processes, processes_in_namespaces
+from emulation.procs import kill_processes, processes_in_namespaces
 
 
 def _fake_proc(tmp_path, namespaces):

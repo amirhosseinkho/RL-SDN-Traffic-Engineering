@@ -1,7 +1,8 @@
 """Run the routing policies on an emulated network (Mininet + an os-ken/Ryu OpenFlow controller).
 
-Only `mapping`, `observation`, `policies` and `measure` are importable without Mininet; see
-docs/emulation.md.
+Only `topology` and `session` (and the scripts using them: `runner`, `milestone`) import Mininet, and
+`controller_app` (run under osken-manager or ryu-manager) imports os-ken or Ryu; the other modules
+import without them, which the unit tests rely on. See docs/emulation.md.
 """
 import sys
 from pathlib import Path
