@@ -47,7 +47,7 @@ def test_installed_path_carries_the_traffic(tmp_path):
         pcap = tmp_path / "capture.pcapng"
         os.chmod(tmp_path, 0o777)  # dumpcap may drop privileges before writing
         proc = capture(spine_interfaces(mapping, spines), 4, pcap)
-        results = run_traffic(session.net, [flow], {0: 1_000_000}, 2.0)
+        results = run_traffic(session.net, [flow], {0: 1_000_000}, 3.0, (1.0, 3.0))
         proc.wait(timeout=30)
 
         assert results[0].error is None and results[0].received_bytes > 0

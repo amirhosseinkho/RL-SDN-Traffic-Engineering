@@ -55,3 +55,5 @@ def start_network(net: Mininet) -> None:
     for h in net.hosts:
         # IPv6 neighbour discovery and MLD would only add dropped noise to the captures
         h.cmd("sysctl -qw net.ipv6.conf.all.disable_ipv6=1 net.ipv6.conf.default.disable_ipv6=1")
+        # fq enforces each socket's pacing rate (iperf3 --fq-rate, see emulation/traffic.py)
+        h.cmd(f"tc qdisc replace dev {h.defaultIntf()} root fq")

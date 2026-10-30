@@ -49,7 +49,7 @@ def capture_and_check(session: EmulationSession, flows, paths, tag: str, out: Pa
     intfs = spine_interfaces(session.mapping, spines)
     pcap = Path("/tmp") / f"milestone_{tag}.pcapng"  # tshark (dumpcap) may not write into a home dir as root
     proc = capture(intfs, 4, pcap)
-    run_traffic(session.net, flows, {f.flow_id: 1_000_000 for f in flows}, 2.0)
+    run_traffic(session.net, flows, {f.flow_id: 1_000_000 for f in flows}, 3.0, (1.0, 3.0))
     proc.wait(timeout=30)
     counts = read_counts(pcap)
     results = check(counts, [(f.flow_id, f.src_ip, f.dst_ip, paths[(f.src, f.dst)]) for f in flows], session.mapping, spines)

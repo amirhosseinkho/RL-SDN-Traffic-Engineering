@@ -1,14 +1,28 @@
 """Parsing iperf3 and ping output."""
 import json
 
-from emulation.traffic import FlowResult, FlowSpec, parse_iperf3_udp, parse_ping
+from emulation.traffic import (
+    PAYLOAD_FRACTION,
+    FlowResult,
+    FlowSpec,
+    parse_iperf3_udp,
+    parse_ping,
+)
 
 # Shape of `iperf3 -u --json` client output (iperf3 3.16), trimmed to the fields used
+# Shape of `iperf3 -u --json --get-server-output` client output (iperf3 3.16, server run with -J)
 IPERF = {
     "start": {},
     "end": {
         "sum_sent": {"seconds": 3.0, "bytes": 5624400, "packets": 4687, "lost_packets": 0},
         "sum_received": {"seconds": 3.03, "bytes": 3654000, "packets": 4686, "lost_packets": 1641},
+    },
+    "server_output_json": {
+        "intervals": [
+            {"sum": {"start": 0, "end": 1.0001, "bytes": 1000000, "packets": 1000, "lost_packets": 0}},
+            {"sum": {"start": 1.0001, "end": 2.0002, "bytes": 1300000, "packets": 1900, "lost_packets": 600}},
+            {"sum": {"start": 2.0002, "end": 3.0003, "bytes": 1354000, "packets": 1786, "lost_packets": 432}},
+        ]
     },
 }
 
@@ -23,10 +37,21 @@ PING = """PING 192.168.3.6 (192.168.3.6) 56(84) bytes of data.
 
 def test_parse_iperf3_udp():
     r = FlowResult(0, demanded_bps=15e6)
-    parse_iperf3_udp(json.dumps(IPERF), r)
+    parse_iperf3_udp(json.dumps(IPERF), r, window=(1.0, 3.0))
     assert (r.sent_bytes, r.received_bytes, r.lost_packets, r.packets) == (5624400, 3654000, 1641, 4686)
-    assert r.demanded_bytes == 15e6 / 8 * 3.0
-    assert round(r.loss_pct, 1) == 35.0 and r.error is None
+    # demanded rates are wire rates; the payload share is 1000 / 1042 bytes
+    assert r.demanded_bytes == 15e6 / 8 * 3.0 * PAYLOAD_FRACTION and round(PAYLOAD_FRACTION, 4) == 0.9597
+    # only the server intervals inside the window count
+    assert (r.window_received_bytes, r.window_packets, r.window_lost_packets) == (2654000, 3686, 1032)
+    assert abs(r.window_seconds - 2.0002) < 1e-9
+    assert round(r.loss_pct, 1) == 28.0 and r.error is None
+
+
+def test_window_without_server_intervals_is_an_error():
+    data = {k: v for k, v in IPERF.items() if k != "server_output_json"}
+    r = FlowResult(0, 1e6)
+    parse_iperf3_udp(json.dumps(data), r, window=(1.0, 3.0))
+    assert r.window_seconds == 0 and r.error
 
 
 def test_parse_iperf3_error():
