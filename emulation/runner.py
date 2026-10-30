@@ -14,6 +14,7 @@ The traffic (flows and demand sequence) depends only on --traffic-seed, not on t
 from __future__ import annotations
 
 import argparse
+import gzip
 import json
 import os
 import subprocess
@@ -175,6 +176,7 @@ class Runner:
             cpu.stop()
         epochs_file.close()
         summary = summarize(self.out / "epochs.jsonl")
+        subprocess.run(["gzip", "-f", str(self.out / "epochs.jsonl")], check=True)
         summary.update({"policy": args.policy, "traffic_seed": args.traffic_seed, "model": str(args.model) if args.model else None,
                         "capacity_scale": args.scale, "epoch_seconds": args.epoch_seconds})
         (self.out / "summary.json").write_text(json.dumps(summary, indent=2))
@@ -206,7 +208,17 @@ class Runner:
         if obs is not None:
             out["obs"] = [round(float(x), 5) for x in obs]
         if info is not None:
-            out["sim"] = {"delivered_pct": 100.0 * info["delivered_ratio"], "mean_path_latency_ms": info["mean_path_latency_ms"]}
+            # The simulator's prediction for the same routing and demands, incl. its link state
+            states = self.env.sim_state.link_states
+            out["sim"] = {
+                "delivered_pct": 100.0 * info["delivered_ratio"],
+                "mean_path_latency_ms": info["mean_path_latency_ms"],
+                "links": {
+                    f"{lk.src}-{lk.dst}": [round(x, 5) for x in (states[(lk.src, lk.dst)].utilization, states[(lk.src, lk.dst)].latency_ms,
+                                                                  states[(lk.src, lk.dst)].packet_loss, states[(lk.src, lk.dst)].queue_occupancy)]
+                    for lk in self.mapping.links
+                },
+            }
         if "verified" in rec:
             out["verified"] = rec["verified"]
         return out
@@ -214,7 +226,8 @@ class Runner:
 
 def summarize(epochs_path: Path) -> dict[str, Any]:
     """Run-level metrics over the policy's epochs (the warm-up epoch is excluded)."""
-    epochs = [json.loads(line) for line in epochs_path.read_text().splitlines()]
+    text = gzip.decompress(epochs_path.read_bytes()).decode() if epochs_path.suffix == ".gz" else epochs_path.read_text()
+    epochs = [json.loads(line) for line in text.splitlines()]
     epochs = [e for e in epochs if e["epoch"] >= 0]
     rtts = [x for e in epochs for f in e["flows"].values() for x in f["rtts_ms"]]
     pings_sent = sum(f["pings_sent"] for e in epochs for f in e["flows"].values())
