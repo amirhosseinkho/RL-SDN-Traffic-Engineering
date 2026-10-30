@@ -1,0 +1,352 @@
+"""Tables and figure for the Mininet experiment.
+
+    python -m emulation.analyze experiments/mininet_experiment
+
+Reads runs/main/*/ and runs/stress/*/ (summary.json, epochs.jsonl.gz), sim_matched.json and the
+second experiment's eval_seed_*.json; writes summary.md, results.json and delivered.png.
+"""
+from __future__ import annotations
+
+import gzip
+import json
+import statistics
+import sys
+from pathlib import Path
+from typing import Any
+
+import numpy as np
+
+ORDER = ["shortest_path", "ecmp", "random", "least_loaded", "dqn", "ppo"]
+STRESS_LINK = ("spine1", "leaf4")
+FEATURES = ["utilization", "latency_ms", "packet_loss", "queue_occupancy"]
+SIM_CAPACITY_MBPS = 200.0  # switch links in the simulator; demands_mbps are in the same (unscaled) units
+
+
+def ms(values: list[float], fmt: str = "{:.1f}") -> str:
+    values = [v for v in values if v is not None]
+    if not values:
+        return "n/a"
+    sd = statistics.stdev(values) if len(values) > 1 else 0.0
+    return f"{fmt.format(statistics.fmean(values))} ± {fmt.format(sd)}"
+
+
+def ranks(means: dict[str, float]) -> dict[str, int]:
+    """1 = most delivered demand."""
+    order = sorted(means, key=lambda p: -means[p])
+    return {p: order.index(p) + 1 for p in means}
+
+
+def spearman(a: dict[str, float], b: dict[str, float]) -> float:
+    keys = sorted(a)
+    ra, rb = ranks(a), ranks(b)
+    x, y = np.array([ra[k] for k in keys], float), np.array([rb[k] for k in keys], float)
+    return float(np.corrcoef(x, y)[0, 1])
+
+
+def load_epochs(run_dir: Path) -> list[dict[str, Any]]:
+    path = run_dir / "epochs.jsonl.gz"
+    text = gzip.decompress(path.read_bytes()).decode() if path.exists() else (run_dir / "epochs.jsonl").read_text()
+    return [json.loads(line) for line in text.splitlines()]
+
+
+def load_runs(base: Path) -> list[dict[str, Any]]:
+    runs = []
+    for d in sorted(base.glob("*/")):
+        if (d / "summary.json").exists():
+            s = json.loads((d / "summary.json").read_text())
+            s["dir"] = d
+            s["model_seed"] = Path(s["model"]).parent.name.removeprefix("seed_") if s.get("model") else None
+            runs.append(s)
+    return runs
+
+
+def demand_share_on(epoch: dict[str, Any], link: tuple[str, str]) -> float:
+    total = on = 0.0
+    for fid, path in epoch["paths"].items():
+        d = epoch["demands_mbps"][int(fid)]
+        total += d
+        if any({a, b} == set(link) for a, b in zip(path, path[1:])):
+            on += d
+    return on / total if total else 0.0
+
+
+def _switch_hops(path: list[str]) -> list[tuple[str, str]]:
+    sw = [n for n in path if not n.startswith("h")]
+    return list(zip(sw, sw[1:]))
+
+
+def fluid_delivered(paths: dict[str, list[str]], demands: list[float], per_direction: bool, thinning: bool) -> float:
+    """Delivered demand (%) of a fluid model of the switch links.
+
+    per_direction=False, thinning=False is the simulator's model: a link's capacity is shared by both
+    directions, and a flow gets the smallest capacity/offered share along its path, computed from the
+    full demands. per_direction gives each direction the full capacity (as the emulated links do);
+    thinning drops excess in proportion at every hop, so downstream links carry only what got through
+    upstream (fixed point by iteration).
+    """
+    hops = {int(f): _switch_hops(p) for f, p in paths.items()}
+
+    def key(h):
+        return h if per_direction else frozenset(h)
+    rate_in = {(f, k): demands[f] for f in hops for k in range(len(hops[f]))}
+    out: dict[int, float] = {}
+    for _ in range(200 if thinning else 1):
+        offered: dict[Any, float] = {}
+        for (f, k), r in rate_in.items():
+            offered[key(hops[f][k])] = offered.get(key(hops[f][k]), 0.0) + r
+        new = {}
+        for f in hops:
+            r = share = demands[f]
+            for k, h in enumerate(hops[f]):
+                new[(f, k)] = r
+                load = offered[key(h)]
+                if load > SIM_CAPACITY_MBPS:
+                    r *= SIM_CAPACITY_MBPS / load
+                    share = min(share, demands[f] * SIM_CAPACITY_MBPS / load)
+            out[f] = r if thinning else share
+        rate_in = new
+    total = sum(demands[f] for f in hops)
+    return 100.0 * sum(out.values()) / total if total else 100.0
+
+
+def main() -> None:
+    root = Path(sys.argv[1])
+    main_runs = load_runs(root / "runs" / "main")
+    stress_runs = load_runs(root / "runs" / "stress")
+    sim_matched = json.loads((root / "sim_matched.json").read_text())["runs"]
+    second = [json.loads(p.read_text()) for p in sorted((root.parent / "second_experiment").glob("eval_seed_*.json"))]
+    out: list[str] = []
+    results: dict[str, Any] = {}
+
+    by_policy = {p: [r for r in main_runs if r["policy"] == p] for p in ORDER}
+    sim_by_policy = {p: [r for r in sim_matched if r["policy"] == p] for p in ORDER}
+    second_by_policy = {p: [s["results"][p]["avg_delivered_pct"] for s in second] for p in ORDER}
+
+    out.append("# Mininet experiment: results\n")
+    out.append("Generated by `python -m emulation.analyze experiments/mininet_experiment` from the runs in `runs/`.\n")
+    n_epochs = {r["epochs"] for r in main_runs}
+    out.append(f"Main runs: {len(main_runs)}, epochs per run: {sorted(n_epochs)}, stress runs: {len(stress_runs)}.\n")
+
+    # ── Table 1: emulation metrics ──
+    out.append("## Emulation (Mininet + os-ken)\n")
+    out.append("Mean ± sample std over runs (baselines: 3 traffic seeds; DQN/PPO: 3 model seeds × 3 traffic seeds). "
+               "Delivered demand and loss are measured inside each epoch's measurement window (iperf3 server intervals); "
+               "RTT from pings (5/s per flow); route churn = FlowMods sent per epoch. "
+               "\"Simulator on the same decisions\" is SDNRoutingEnv's outcome for the routing the policy chose in the "
+               "emulation, with the same demands.\n")
+    out.append("| Policy | Runs | Delivered demand (%) | Simulator on the same decisions (%) | Mean RTT (ms) | p95 RTT (ms) | Loss (%) | FlowMods / epoch | Max CPU (%) |")
+    out.append("|---|---|---|---|---|---|---|---|---|")
+    emu = {}
+    for p in ORDER:
+        rs = by_policy[p]
+        if not rs:
+            out.append(f"| {p} | 0 | not run | | | | | | |")
+            continue
+        emu[p] = statistics.fmean(r["delivered_pct"] for r in rs)
+        out.append(
+            f"| {p} | {len(rs)} | {ms([r['delivered_pct'] for r in rs])} | {ms([r['sim_predicted_delivered_pct'] for r in rs])} | "
+            f"{ms([r['rtt_mean_ms'] for r in rs])} | {ms([r['rtt_p95_ms'] for r in rs])} | {ms([r['loss_pct'] for r in rs])} | "
+            f"{ms([r['flowmods_per_epoch'] for r in rs])} | {max(r['cpu_max_pct'] for r in rs):.1f} |"
+        )
+    results["emulation"] = {p: {k: [r[k] for r in by_policy[p]] for k in ("delivered_pct", "sim_predicted_delivered_pct", "rtt_mean_ms", "rtt_p95_ms", "loss_pct", "flowmods_per_epoch")} for p in ORDER}
+
+    errors = sum(r["iperf_errors"] for r in main_runs)
+    mismatched = [r["dir"].name for r in main_runs if not r["flowmods_match_prediction"]]
+    out.append(f"\niperf3 errors (flow-epochs without a valid result) in the main runs: {errors}. "
+               f"Runs where FlowMods sent differ from the predicted rule changes: {mismatched or 'none'}. "
+               f"Max CPU over all main runs: {max(r['cpu_max_pct'] for r in main_runs):.1f}%, "
+               f"mean {statistics.fmean(r['cpu_mean_pct'] for r in main_runs):.1f}%.\n")
+
+    # ── Table 2: ranks ──
+    sim = {p: statistics.fmean(r["delivered_pct"] for r in sim_by_policy[p]) for p in ORDER if sim_by_policy[p]}
+    sec = {p: statistics.fmean(v) for p, v in second_by_policy.items() if v}
+    common = [p for p in ORDER if p in emu and p in sim and p in sec]
+    rs_sec, rs_sim, rs_emu = ranks({p: sec[p] for p in common}), ranks({p: sim[p] for p in common}), ranks({p: emu[p] for p in common})
+    out.append("## Ranking: simulator vs emulation (delivered demand)\n")
+    out.append("Rank 1 = most demand delivered. *Second experiment*: 20 episodes × 200 steps, evaluation seed 1000, "
+               "ECMP there is round-robin over the 4 candidate paths. *Simulator, same traffic*: the same policies "
+               "(ECMP = 5-tuple hash, as in the emulation) in SDNRoutingEnv on exactly the emulated traffic "
+               "(traffic seeds 1000-1002, first 20 steps), observing the simulator. *Emulation*: Table above.\n")
+    out.append("| Policy | Second experiment (sim) | Simulator, same traffic | Emulation | Emulation − simulator, same traffic (points) |")
+    out.append("|---|---|---|---|---|")
+    for p in common:
+        out.append(f"| {p} | {sec[p]:.1f} (#{rs_sec[p]}) | {ms([r['delivered_pct'] for r in sim_by_policy[p]])} (#{rs_sim[p]}) | "
+                   f"{ms([r['delivered_pct'] for r in by_policy[p]])} (#{rs_emu[p]}) | {emu[p] - sim[p]:+.1f} |")
+    rho_sim = spearman({p: sim[p] for p in common}, {p: emu[p] for p in common})
+    rho_sec = spearman({p: sec[p] for p in common}, {p: emu[p] for p in common})
+    out.append(f"\nSpearman rank correlation of the policy means: emulation vs simulator on the same traffic {rho_sim:.2f}; "
+               f"emulation vs second experiment {rho_sec:.2f}.\n")
+    results["ranks"] = {"second_experiment": rs_sec, "sim_same_traffic": rs_sim, "emulation": rs_emu,
+                        "spearman_emu_vs_sim_same_traffic": rho_sim, "spearman_emu_vs_second": rho_sec}
+
+    # ── Table 3: per traffic seed ──
+    seeds = sorted({r["traffic_seed"] for r in main_runs})
+    out.append("## Per traffic seed (delivered demand %, simulator same traffic / emulation)\n")
+    out.append("The traffic seeds differ strongly in load, so the means above mix very different conditions. "
+               "DQN/PPO cells are means over the 3 model seeds.\n")
+    out.append("| Policy | " + " | ".join(f"seed {s}" for s in seeds) + " |")
+    out.append("|---|" + "---|" * len(seeds))
+    per_seed_rank: dict[int, dict[str, int]] = {}
+    for p in ORDER:
+        cells = []
+        for s in seeds:
+            e = [r["delivered_pct"] for r in by_policy[p] if r["traffic_seed"] == s]
+            m = [r["delivered_pct"] for r in sim_by_policy[p] if r["traffic_seed"] == s]
+            cells.append(f"{statistics.fmean(m):.1f} / {statistics.fmean(e):.1f}" if e and m else "not run")
+        out.append(f"| {p} | " + " | ".join(cells) + " |")
+    for s in seeds:
+        em = {p: statistics.fmean(r["delivered_pct"] for r in by_policy[p] if r["traffic_seed"] == s) for p in common}
+        sm = {p: statistics.fmean(r["delivered_pct"] for r in sim_by_policy[p] if r["traffic_seed"] == s) for p in common}
+        per_seed_rank[s] = {"sim": ranks(sm), "emu": ranks(em), "spearman": spearman(sm, em)}
+    out.append("\nRanks per seed (simulator same traffic → emulation): " + "; ".join(
+        f"seed {s}: " + ", ".join(f"{p} {v['sim'][p]}→{v['emu'][p]}" for p in common) + f" (Spearman {v['spearman']:.2f})"
+        for s, v in per_seed_rank.items()) + "\n")
+    results["per_seed_ranks"] = per_seed_rank
+
+    # ── Table 4: features ──
+    sim_vals: dict[str, list[float]] = {f: [] for f in FEATURES}
+    emu_vals: dict[str, list[float]] = {f: [] for f in FEATURES}
+    for r in main_runs:
+        for e in load_epochs(r["dir"]):
+            if e["epoch"] < 0 or "sim" not in e:
+                continue
+            for name, simv in e["sim"].get("links", {}).items():
+                for i, f in enumerate(FEATURES):
+                    sim_vals[f].append(simv[i])
+                    emu_vals[f].append(e["links"][name][f])
+    out.append("## Link features: simulator vs measured, same routing and demands\n")
+    out.append("Every link of every policy epoch in the main runs: the simulator's link state for the routing and "
+               "demands of that epoch, against the value measured in the emulation (as fed to the agents, before "
+               "normalization). See docs/emulation.md for how each is measured.\n")
+    out.append("| Feature | Samples | Simulator mean | Measured mean | Mean absolute difference | Correlation |")
+    out.append("|---|---|---|---|---|---|")
+    feat_stats = {}
+    for f in FEATURES:
+        a, b = np.array(sim_vals[f]), np.array(emu_vals[f])
+        corr = float(np.corrcoef(a, b)[0, 1]) if a.size > 1 and a.std() > 0 and b.std() > 0 else float("nan")
+        feat_stats[f] = {"n": int(a.size), "sim_mean": float(a.mean()), "emu_mean": float(b.mean()), "mae": float(np.abs(a - b).mean()), "corr": corr}
+        out.append(f"| {f} | {a.size} | {a.mean():.3f} | {b.mean():.3f} | {np.abs(a - b).mean():.3f} | {corr:.2f} |")
+    results["features"] = feat_stats
+
+    # ── Table 4b: delivered-demand gap vs link model ──
+    models = {
+        "simulator (shared capacity, min share)": (False, False),
+        "per-direction capacity, min share": (True, False),
+        "per-direction capacity, drops thin downstream load": (True, True),
+    }
+    gaps: dict[str, list[float]] = {m: [] for m in models}
+    logged_sim: list[float] = []
+    for r in main_runs:
+        for e in load_epochs(r["dir"]):
+            if e["epoch"] < 0 or "sim" not in e:
+                continue
+            logged_sim.append(e["sim"]["delivered_pct"] - e["delivered_pct"])
+            for m, (pd, th) in models.items():
+                gaps[m].append(fluid_delivered(e["paths"], e["demands_mbps"], pd, th) - e["delivered_pct"])
+    out.append("\n## Delivered demand: emulation vs fluid link models\n")
+    out.append("Every policy epoch of the main runs, same routing and demands. Each row recomputes delivered demand "
+               "with a fluid model of the switch links and compares it with the emulation (model − emulation, "
+               f"percentage points). The first row reproduces the simulator's logged value (largest deviation "
+               f"{max(abs(a - b) for a, b in zip(logged_sim, gaps[next(iter(models))])):.1e}).\n")
+    out.append("| Link model | Epochs | Mean difference | Mean absolute difference | Max absolute difference |")
+    out.append("|---|---|---|---|---|")
+    gap_stats = {}
+    for m, g in gaps.items():
+        a = np.array(g)
+        gap_stats[m] = {"n": int(a.size), "mean": float(a.mean()), "mae": float(np.abs(a).mean()), "max_abs": float(np.abs(a).max())}
+        out.append(f"| {m} | {a.size} | {a.mean():+.2f} | {np.abs(a).mean():.2f} | {np.abs(a).max():.2f} |")
+    results["fluid_models"] = gap_stats
+
+    # ── Table 5: stress ──
+    out.append("\n## netem stress test\n")
+    out.append(f"From epoch 5 on, both directions of {STRESS_LINK[0]}-{STRESS_LINK[1]} get +20 ms netem delay and 2% "
+               "random loss (`tc qdisc change` at runtime). Before = epochs 0-4, after = epochs 5-19. "
+               "Share on link = share of total demand routed over the degraded link. iperf3 failures = flow-epochs "
+               "after the change without a result: the 2% netem loss can drop iperf3's UDP setup datagram, and the "
+               "flow then sends nothing. Such a flow has no measurement window, so it is left out of delivered demand "
+               "(numerator and denominator); its traffic is also missing from the links in that epoch.\n")
+    out.append("| Policy | Traffic seed | Delivered before / after (%) | p95 RTT before / after (ms) | Demand share on degraded link before / after | FlowMods / epoch after | Measured loss on link after (%) | iperf3 failures after |")
+    out.append("|---|---|---|---|---|---|---|---|")
+    stress_rows = []
+    for r in sorted(stress_runs, key=lambda r: (ORDER.index(r["policy"]), r["traffic_seed"])):
+        es = [e for e in load_epochs(r["dir"]) if e["epoch"] >= 0]
+        before, after = [e for e in es if e["epoch"] < 5], [e for e in es if e["epoch"] >= 5]
+
+        def p95(group):
+            x = [v for e in group for f in e["flows"].values() for v in f["rtts_ms"]]
+            return float(np.percentile(x, 95)) if x else float("nan")
+        name = "-".join(STRESS_LINK)
+        row = {
+            "policy": r["policy"], "traffic_seed": r["traffic_seed"], "model_seed": r["model_seed"],
+            "delivered_before": statistics.fmean(e["delivered_pct"] for e in before),
+            "delivered_after": statistics.fmean(e["delivered_pct"] for e in after),
+            "p95_before": p95(before), "p95_after": p95(after),
+            "share_before": statistics.fmean(demand_share_on(e, STRESS_LINK) for e in before),
+            "share_after": statistics.fmean(demand_share_on(e, STRESS_LINK) for e in after),
+            "flowmods_after": statistics.fmean(e["flowmods"] for e in after),
+            "link_loss_after": statistics.fmean(e["links"][name]["packet_loss"] for e in after),
+            "iperf_errors_after": sum(1 for e in after for f in e["flows"].values() if f["error"]),
+        }
+        stress_rows.append(row)
+        label = r["policy"] + (f" (model seed {r['model_seed']})" if r["model_seed"] is not None else "")
+        out.append(f"| {label} | {r['traffic_seed']} | {row['delivered_before']:.1f} / {row['delivered_after']:.1f} | "
+                   f"{row['p95_before']:.1f} / {row['p95_after']:.1f} | {row['share_before']:.2f} / {row['share_after']:.2f} | "
+                   f"{row['flowmods_after']:.1f} | {row['link_loss_after']:.2f} | {row['iperf_errors_after']} |")
+    results["stress"] = stress_rows
+
+    # ── Verification ──
+    out.append("\n## Path verification (tshark)\n")
+    out.append("One epoch per policy (epoch 3, traffic seed 1000; DQN/PPO model seed 0), captured on all 8 spine "
+               "interfaces, snaplen 96: flows seen only on the spine interfaces of their installed paths.\n")
+    out.append("| Run | Flows on their installed path only | Capture size (bytes) |")
+    out.append("|---|---|---|")
+    for r in main_runs:
+        if r.get("verified"):
+            v = r["verified"]
+            out.append(f"| {r['dir'].name} | {v['ok']}/{v['flows']} | {v['pcap_bytes']} |")
+
+    (root / "summary.md").write_text("\n".join(out) + "\n")
+    (root / "results.json").write_text(json.dumps(results, indent=2, default=str))
+    plot(root / "delivered.png", common, second_by_policy, sim_by_policy, by_policy)
+    print("\n".join(out))
+
+
+def plot(path: Path, policies, second_by_policy, sim_by_policy, by_policy) -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    series = [
+        ("Second experiment (simulator)", [second_by_policy[p] for p in policies], "#2a78d6"),
+        ("Simulator, same traffic", [[r["delivered_pct"] for r in sim_by_policy[p]] for p in policies], "#eb6834"),
+        ("Emulation (Mininet)", [[r["delivered_pct"] for r in by_policy[p]] for p in policies], "#1baf7a"),
+    ]
+    fig, ax = plt.subplots(figsize=(9, 4.2), dpi=150)
+    fig.patch.set_facecolor("#fcfcfb")
+    ax.set_facecolor("#fcfcfb")
+    width = 0.26
+    x = np.arange(len(policies))
+    for i, (label, values, color) in enumerate(series):
+        means = [statistics.fmean(v) for v in values]
+        sds = [statistics.stdev(v) if len(v) > 1 else 0.0 for v in values]
+        pos = x + (i - 1) * (width + 0.02)
+        ax.bar(pos, means, width, color=color, label=label, edgecolor="#fcfcfb", linewidth=1)
+        ax.errorbar(pos, means, yerr=sds, fmt="none", ecolor="#555550", elinewidth=1, capsize=2)
+        for xp, m in zip(pos, means):
+            ax.text(xp, 1.5, f"{m:.0f}", ha="center", va="bottom", fontsize=7, color="#fcfcfb")
+    ax.set_xticks(x, [p.replace("_", " ") for p in policies])
+    ax.set_ylabel("Delivered demand (%)")
+    ax.set_ylim(0, 105)
+    ax.grid(axis="y", color="#e4e3dd", linewidth=0.8)
+    ax.set_axisbelow(True)
+    for side in ("top", "right"):
+        ax.spines[side].set_visible(False)
+    ax.legend(frameon=False, fontsize=8, ncol=3, loc="upper center", bbox_to_anchor=(0.5, 1.12))
+    ax.set_title("Mean ± std across runs; same policies, three settings", fontsize=9, color="#555550", pad=24)
+    fig.tight_layout()
+    fig.savefig(path)
+
+
+if __name__ == "__main__":
+    main()
