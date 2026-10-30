@@ -1,0 +1,49 @@
+flow 0 192.168.1.2 -> 192.168.3.7 path h1-leaf1-spine2-leaf2-spine1-leaf3-h6: OK
+  expected spine interfaces: spine1-eth2, spine1-eth3, spine2-eth1, spine2-eth2
+  packets seen (both directions): {'spine1-eth2': 227, 'spine1-eth3': 230, 'spine2-eth1': 230, 'spine2-eth2': 230}
+flow 1 192.168.1.3 -> 192.168.2.5 path h2-leaf1-spine1-leaf2-h4: OK
+  expected spine interfaces: spine1-eth1, spine1-eth2
+  packets seen (both directions): {'spine1-eth1': 209, 'spine1-eth2': 208}
+flow 2 192.168.3.6 -> 192.168.4.9 path h5-leaf3-spine2-leaf4-h8: OK
+  expected spine interfaces: spine2-eth3, spine2-eth4
+  packets seen (both directions): {'spine2-eth3': 95, 'spine2-eth4': 96}
+flow 3 192.168.3.7 -> 192.168.4.8 path h6-leaf3-spine1-leaf4-h7: OK
+  expected spine interfaces: spine1-eth3, spine1-eth4
+  packets seen (both directions): {'spine1-eth3': 194, 'spine1-eth4': 194}
+flow 4 192.168.2.4 -> 192.168.2.5 path h3-leaf2-h4: OK
+  expected spine interfaces: (none: same leaf)
+  packets seen (both directions): {}
+flow 5 192.168.1.3 -> 192.168.3.6 path h2-leaf1-spine2-leaf3-h5: OK
+  expected spine interfaces: spine2-eth1, spine2-eth3
+  packets seen (both directions): {'spine2-eth1': 145, 'spine2-eth3': 144}
+flow 6 192.168.1.3 -> 192.168.2.4 path h2-leaf1-spine1-leaf2-h3: OK
+  expected spine interfaces: spine1-eth1, spine1-eth2
+  packets seen (both directions): {'spine1-eth1': 159, 'spine1-eth2': 160}
+flow 7 192.168.1.3 -> 192.168.4.8 path h2-leaf1-spine1-leaf4-h7: OK
+  expected spine interfaces: spine1-eth1, spine1-eth4
+  packets seen (both directions): {'spine1-eth1': 1438, 'spine1-eth4': 1439}
+flow 8 192.168.2.5 -> 192.168.4.9 path h4-leaf2-spine1-leaf4-h8: OK
+  expected spine interfaces: spine1-eth2, spine1-eth4
+  packets seen (both directions): {'spine1-eth2': 106, 'spine1-eth4': 106}
+flow 9 192.168.1.2 -> 192.168.3.6 path h1-leaf1-spine2-leaf3-h5: OK
+  expected spine interfaces: spine2-eth1, spine2-eth3
+  packets seen (both directions): {'spine2-eth1': 1802, 'spine2-eth3': 1791}
+flow 10 192.168.3.7 -> 192.168.4.9 path h6-leaf3-spine2-leaf4-h8: OK
+  expected spine interfaces: spine2-eth3, spine2-eth4
+  packets seen (both directions): {'spine2-eth3': 321, 'spine2-eth4': 324}
+flow 11 192.168.1.2 -> 192.168.4.9 path h1-leaf1-spine1-leaf4-h8: OK
+  expected spine interfaces: spine1-eth1, spine1-eth4
+  packets seen (both directions): {'spine1-eth1': 1612, 'spine1-eth4': 1617}
+flow 12 192.168.3.6 -> 192.168.4.8 path h5-leaf3-spine2-leaf1-spine1-leaf4-h7: OK
+  expected spine interfaces: spine1-eth1, spine1-eth4, spine2-eth1, spine2-eth3
+  packets seen (both directions): {'spine1-eth1': 49, 'spine1-eth4': 51, 'spine2-eth1': 60, 'spine2-eth3': 60}
+flow 13 192.168.1.2 -> 192.168.2.5 path h1-leaf1-spine1-leaf2-h4: OK
+  expected spine interfaces: spine1-eth1, spine1-eth2
+  packets seen (both directions): {'spine1-eth1': 55, 'spine1-eth2': 57}
+flow 14 192.168.1.3 -> 192.168.3.7 path h2-leaf1-spine1-leaf3-h6: OK
+  expected spine interfaces: spine1-eth1, spine1-eth3
+  packets seen (both directions): {'spine1-eth1': 212, 'spine1-eth3': 212}
+flow 15 192.168.1.3 -> 192.168.4.9 path h2-leaf1-spine2-leaf4-h8: OK
+  expected spine interfaces: spine2-eth1, spine2-eth4
+  packets seen (both directions): {'spine2-eth1': 353, 'spine2-eth4': 353}
+16/16 flows on their installed path only

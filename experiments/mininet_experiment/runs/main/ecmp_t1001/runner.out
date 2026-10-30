@@ -1,0 +1,45 @@
+epoch  0 delivered 100.0% (sim  99.6%) churn  36 cpu  1.6% wall 10.2s
+epoch  1 delivered 100.0% (sim  94.5%) churn   0 cpu  1.6% wall 10.2s
+epoch  2 delivered 100.0% (sim  98.4%) churn   0 cpu  1.6% wall 10.2s
+epoch  3 delivered 100.0% (sim  98.6%) churn   0 cpu  1.6% wall 10.2s
+epoch  4 delivered 100.0% (sim 100.0%) churn   0 cpu  1.4% wall 10.2s
+epoch  5 delivered 100.0% (sim 100.0%) churn   0 cpu  1.4% wall 10.2s
+epoch  6 delivered 100.0% (sim 100.0%) churn   0 cpu  1.6% wall 10.2s
+epoch  7 delivered 100.0% (sim 100.0%) churn   0 cpu  1.4% wall 10.2s
+epoch  8 delivered  99.9% (sim 100.0%) churn   0 cpu  1.7% wall 10.2s
+epoch  9 delivered 100.0% (sim 100.0%) churn   0 cpu  1.5% wall 10.2s
+epoch 10 delivered 100.0% (sim 100.0%) churn   0 cpu  1.5% wall 10.2s
+epoch 11 delivered 100.0% (sim 100.0%) churn   0 cpu  1.6% wall 10.2s
+epoch 12 delivered 100.0% (sim 100.0%) churn   0 cpu  1.7% wall 10.2s
+epoch 13 delivered 100.0% (sim 100.0%) churn   0 cpu  1.1% wall 10.2s
+epoch 14 delivered 100.0% (sim 100.0%) churn   0 cpu  1.4% wall 10.2s
+epoch 15 delivered 100.0% (sim 100.0%) churn   0 cpu  1.5% wall 10.2s
+epoch 16 delivered 100.0% (sim 100.0%) churn   0 cpu  1.6% wall 10.2s
+epoch 17 delivered 100.0% (sim 100.0%) churn   0 cpu  1.5% wall 10.2s
+epoch 18 delivered 100.0% (sim 100.0%) churn   0 cpu  1.4% wall 10.2s
+epoch 19 delivered  84.3% (sim  68.2%) churn   0 cpu  1.9% wall 10.2s
+{
+  "epochs": 20,
+  "delivered_pct": 99.20431191363875,
+  "sim_predicted_delivered_pct": 97.96844236920008,
+  "sim_predicted_flow_latency_ms": 19.316974870558795,
+  "loss_pct": 1.2278161030799644,
+  "rtt_mean_ms": 18.305522491349482,
+  "rtt_p95_ms": 22.1,
+  "ping_loss_pct": 0.44469497682575465,
+  "flowmods_per_epoch": 1.8,
+  "flowmods_match_prediction": true,
+  "cpu_mean_pct": 1.5201789322815225,
+  "cpu_max_pct": 3.31125827814569,
+  "iperf_errors": 0,
+  "obs_dim": 67,
+  "obs_min": 0.0,
+  "obs_max": 1.0,
+  "wall_s": 203.79069328308105,
+  "verified": null,
+  "policy": "ecmp",
+  "traffic_seed": 1001,
+  "model": null,
+  "capacity_scale": 0.05,
+  "epoch_seconds": 10.0
+}

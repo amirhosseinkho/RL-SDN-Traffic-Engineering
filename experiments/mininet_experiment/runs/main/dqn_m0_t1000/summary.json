@@ -1,0 +1,29 @@
+{
+  "epochs": 20,
+  "delivered_pct": 79.1038028207637,
+  "sim_predicted_delivered_pct": 78.4333683182678,
+  "sim_predicted_flow_latency_ms": 28.713434685832937,
+  "loss_pct": 21.78834463932654,
+  "rtt_mean_ms": 27.122552501761806,
+  "rtt_p95_ms": 49.2,
+  "ping_loss_pct": 11.195944677389068,
+  "flowmods_per_epoch": 26.8,
+  "flowmods_match_prediction": true,
+  "cpu_mean_pct": 2.1945935832977455,
+  "cpu_max_pct": 5.877483443708609,
+  "iperf_errors": 0,
+  "obs_dim": 67,
+  "obs_min": 0.0,
+  "obs_max": 1.0,
+  "wall_s": 209.14346027374268,
+  "verified": {
+    "ok": 16,
+    "flows": 16,
+    "pcap_bytes": 1863888
+  },
+  "policy": "dqn",
+  "traffic_seed": 1000,
+  "model": "/home/amirhossein/second_experiment_models/seed_0/dqn_model.pt",
+  "capacity_scale": 0.05,
+  "epoch_seconds": 10.0
+}

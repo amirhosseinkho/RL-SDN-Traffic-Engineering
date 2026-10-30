@@ -1,0 +1,32 @@
+graph nodes: ['s0000000000000065', 's0000000000000066', 's00000000000000c9', 's00000000000000ca', 's00000000000000cb', 's00000000000000cc']
+graph edges: 16
+host-to-host path from TopologyManager: None
+switch path leaf1->leaf3: ['s00000000000000c9', 's0000000000000065', 's00000000000000cb']
+install_path returned: True True
+--- leaf1
+OFPST_FLOW reply (OF1.3) (xid=0x2):
+ cookie=0x5d0000000000000, duration=0.027s, table=0, n_packets=0, n_bytes=0, priority=100,ip,nw_src=192.168.1.2,nw_dst=192.168.3.6 actions=output:1
+ cookie=0x5d0000000000002, duration=0.006s, table=0, n_packets=0, n_bytes=0, priority=100,ip,nw_src=192.168.3.6,nw_dst=192.168.1.2 actions=output:3
+
+--- spine1
+OFPST_FLOW reply (OF1.3) (xid=0x2):
+ cookie=0x5d0000000000000, duration=0.032s, table=0, n_packets=0, n_bytes=0, priority=100,ip,nw_src=192.168.1.2,nw_dst=192.168.3.6 actions=output:3
+ cookie=0x5d0000000000002, duration=0.007s, table=0, n_packets=0, n_bytes=0, priority=100,ip,nw_src=192.168.3.6,nw_dst=192.168.1.2 actions=output:1
+
+--- spine2
+OFPST_FLOW reply (OF1.3) (xid=0x2):
+
+--- leaf3
+OFPST_FLOW reply (OF1.3) (xid=0x2):
+ cookie=0x5d0000000000000, duration=0.038s, table=0, n_packets=0, n_bytes=0, priority=100,ip,nw_src=192.168.1.2,nw_dst=192.168.3.6 actions=output:3
+ cookie=0x5d0000000000002, duration=0.011s, table=0, n_packets=0, n_bytes=0, priority=100,ip,nw_src=192.168.3.6,nw_dst=192.168.1.2 actions=output:1
+
+PING 192.168.3.6 (192.168.3.6) 56(84) bytes of data.
+64 bytes from 192.168.3.6: icmp_seq=1 ttl=64 time=21.9 ms
+64 bytes from 192.168.3.6: icmp_seq=2 ttl=64 time=20.5 ms
+64 bytes from 192.168.3.6: icmp_seq=3 ttl=64 time=21.3 ms
+
+--- 192.168.3.6 ping statistics ---
+3 packets transmitted, 3 received, 0% packet loss, time 2003ms
+rtt min/avg/max/mdev = 20.539/21.225/21.850/0.536 ms
+

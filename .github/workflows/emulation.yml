@@ -1,0 +1,39 @@
+name: Emulation (Mininet)
+
+# Runs the Mininet integration test (emulation/tests/test_integration_mininet.py) on a hosted
+# runner. Manual only until it has been seen to pass there: hosted runners may not allow loading
+# the openvswitch kernel module or running Open vSwitch (see docs/emulation.md).
+on:
+  workflow_dispatch:
+
+jobs:
+  mininet:
+    name: Mininet integration test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install Mininet, Open vSwitch, iperf3, tshark, os-ken
+        run: |
+          sudo apt-get update
+          echo "wireshark-common wireshark-common/install-setuid boolean false" | sudo debconf-set-selections
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y mininet openvswitch-switch iperf3 tshark python3-os-ken
+          sudo modprobe -a openvswitch sch_htb sch_netem sch_tbf
+          sudo systemctl start openvswitch-switch
+          sudo ovs-vsctl show
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: |
+          pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cpu
+          pip install -r requirements.txt
+
+      - name: Run Mininet integration test
+        run: sudo -E "$(which python)" -m pytest emulation/tests -m mininet -v -p no:cacheprovider

@@ -1,0 +1,175 @@
+2 RLock(s) were not greened, to fix this error make sure you run eventlet.monkey_patch() before importing any other modules.
+loading app /home/amirhossein/RL-SDN-Traffic-Engineering/emulation/controller_app.py
+loading app os_ken.app.ofctl.service
+loading app os_ken.topology.switches
+loading app os_ken.controller.ofp_handler
+instantiating app /home/amirhossein/RL-SDN-Traffic-Engineering/emulation/controller_app.py of EmulationController
+REST API on port 8080
+instantiating app os_ken.app.ofctl.service of OfctlService
+instantiating app os_ken.topology.switches of Switches
+instantiating app os_ken.controller.ofp_handler of OFPHandler
+(69633) wsgi starting up on http://0.0.0.0:8080
+(69633) accepted ('127.0.0.1', 56490)
+127.0.0.1 - - [30/Oct/2026 14:46:48] "GET /health HTTP/1.1" 200 155 0.000121
+switch connected: dpid=201
+switch connected: dpid=203
+switch connected: dpid=102
+switch connected: dpid=101
+switch connected: dpid=204
+switch connected: dpid=202
+(69633) accepted ('127.0.0.1', 56492)
+127.0.0.1 - - [30/Oct/2026 14:46:49] "GET /topology HTTP/1.1" 200 1285 0.000308
+(69633) accepted ('127.0.0.1', 56496)
+127.0.0.1 - - [30/Oct/2026 14:46:49] "POST /paths HTTP/1.1" 200 203 0.002157
+(69633) accepted ('127.0.0.1', 56502)
+127.0.0.1 - - [30/Oct/2026 14:46:49] "POST /paths HTTP/1.1" 200 203 0.001756
+(69633) accepted ('127.0.0.1', 56506)
+127.0.0.1 - - [30/Oct/2026 14:46:49] "POST /paths HTTP/1.1" 200 203 0.001648
+(69633) accepted ('127.0.0.1', 56510)
+127.0.0.1 - - [30/Oct/2026 14:46:49] "POST /paths HTTP/1.1" 200 204 0.001673
+(69633) accepted ('127.0.0.1', 56524)
+127.0.0.1 - - [30/Oct/2026 14:46:49] "POST /paths HTTP/1.1" 200 204 0.001855
+(69633) accepted ('127.0.0.1', 56536)
+127.0.0.1 - - [30/Oct/2026 14:46:49] "POST /paths HTTP/1.1" 200 204 0.001662
+(69633) accepted ('127.0.0.1', 56548)
+127.0.0.1 - - [30/Oct/2026 14:46:49] "POST /paths HTTP/1.1" 200 204 0.001558
+(69633) accepted ('127.0.0.1', 56558)
+127.0.0.1 - - [30/Oct/2026 14:46:49] "POST /paths HTTP/1.1" 200 204 0.001463
+(69633) accepted ('127.0.0.1', 56568)
+127.0.0.1 - - [30/Oct/2026 14:46:49] "POST /paths HTTP/1.1" 200 204 0.000557
+(69633) accepted ('127.0.0.1', 56580)
+127.0.0.1 - - [30/Oct/2026 14:46:49] "POST /paths HTTP/1.1" 200 204 0.000581
+(69633) accepted ('127.0.0.1', 56596)
+127.0.0.1 - - [30/Oct/2026 14:46:49] "POST /paths HTTP/1.1" 200 204 0.001369
+(69633) accepted ('127.0.0.1', 56606)
+127.0.0.1 - - [30/Oct/2026 14:46:49] "POST /paths HTTP/1.1" 200 204 0.001283
+(69633) accepted ('127.0.0.1', 56620)
+127.0.0.1 - - [30/Oct/2026 14:46:49] "POST /paths HTTP/1.1" 200 204 0.001190
+(69633) accepted ('127.0.0.1', 56632)
+127.0.0.1 - - [30/Oct/2026 14:46:49] "POST /paths HTTP/1.1" 200 204 0.001525
+(69633) accepted ('127.0.0.1', 56636)
+127.0.0.1 - - [30/Oct/2026 14:46:49] "POST /paths HTTP/1.1" 200 204 0.000619
+(69633) accepted ('127.0.0.1', 56638)
+127.0.0.1 - - [30/Oct/2026 14:46:49] "POST /paths HTTP/1.1" 200 204 0.000558
+(69633) accepted ('127.0.0.1', 56648)
+127.0.0.1 - - [30/Oct/2026 14:46:49] "POST /paths HTTP/1.1" 200 204 0.001611
+(69633) accepted ('127.0.0.1', 56654)
+127.0.0.1 - - [30/Oct/2026 14:46:49] "POST /paths HTTP/1.1" 200 204 0.001382
+(69633) accepted ('127.0.0.1', 56658)
+127.0.0.1 - - [30/Oct/2026 14:46:49] "POST /paths HTTP/1.1" 200 204 0.001716
+(69633) accepted ('127.0.0.1', 56668)
+127.0.0.1 - - [30/Oct/2026 14:46:49] "POST /paths HTTP/1.1" 200 204 0.001248
+(69633) accepted ('127.0.0.1', 56678)
+127.0.0.1 - - [30/Oct/2026 14:46:49] "POST /paths HTTP/1.1" 200 204 0.001252
+(69633) accepted ('127.0.0.1', 56680)
+127.0.0.1 - - [30/Oct/2026 14:46:49] "POST /paths HTTP/1.1" 200 204 0.001343
+(69633) accepted ('127.0.0.1', 56682)
+127.0.0.1 - - [30/Oct/2026 14:46:49] "POST /paths HTTP/1.1" 200 204 0.001316
+(69633) accepted ('127.0.0.1', 56686)
+127.0.0.1 - - [30/Oct/2026 14:46:49] "POST /paths HTTP/1.1" 200 204 0.001379
+(69633) accepted ('127.0.0.1', 56694)
+127.0.0.1 - - [30/Oct/2026 14:46:49] "POST /paths HTTP/1.1" 200 204 0.001301
+(69633) accepted ('127.0.0.1', 56710)
+127.0.0.1 - - [30/Oct/2026 14:46:49] "POST /paths HTTP/1.1" 200 204 0.001287
+(69633) accepted ('127.0.0.1', 56714)
+127.0.0.1 - - [30/Oct/2026 14:46:49] "POST /paths HTTP/1.1" 200 204 0.001843
+(69633) accepted ('127.0.0.1', 56730)
+127.0.0.1 - - [30/Oct/2026 14:46:49] "POST /paths HTTP/1.1" 200 204 0.001225
+(69633) accepted ('127.0.0.1', 56746)
+127.0.0.1 - - [30/Oct/2026 14:46:49] "POST /paths HTTP/1.1" 200 204 0.001293
+(69633) accepted ('127.0.0.1', 56750)
+127.0.0.1 - - [30/Oct/2026 14:46:49] "POST /paths HTTP/1.1" 200 204 0.001348
+(69633) accepted ('127.0.0.1', 56756)
+127.0.0.1 - - [30/Oct/2026 14:46:49] "POST /paths HTTP/1.1" 200 204 0.001378
+(69633) accepted ('127.0.0.1', 56764)
+127.0.0.1 - - [30/Oct/2026 14:46:49] "POST /paths HTTP/1.1" 200 204 0.001287
+(69633) accepted ('127.0.0.1', 56780)
+127.0.0.1 - - [30/Oct/2026 14:46:51] "GET /stats/ports HTTP/1.1" 200 5567 0.000162
+(69633) accepted ('127.0.0.1', 43754)
+127.0.0.1 - - [30/Oct/2026 14:46:58] "GET /stats/ports HTTP/1.1" 200 5612 0.000204
+(69633) accepted ('127.0.0.1', 43768)
+127.0.0.1 - - [30/Oct/2026 14:47:02] "GET /stats/ports HTTP/1.1" 200 5649 0.000166
+(69633) accepted ('127.0.0.1', 53700)
+127.0.0.1 - - [30/Oct/2026 14:47:09] "GET /stats/ports HTTP/1.1" 200 5673 0.000178
+(69633) accepted ('127.0.0.1', 53708)
+127.0.0.1 - - [30/Oct/2026 14:47:12] "GET /stats/ports HTTP/1.1" 200 5682 0.000217
+(69633) accepted ('127.0.0.1', 39034)
+127.0.0.1 - - [30/Oct/2026 14:47:19] "GET /stats/ports HTTP/1.1" 200 5680 0.000194
+(69633) accepted ('127.0.0.1', 39042)
+127.0.0.1 - - [30/Oct/2026 14:47:22] "GET /stats/ports HTTP/1.1" 200 5681 0.000244
+(69633) accepted ('127.0.0.1', 40914)
+127.0.0.1 - - [30/Oct/2026 14:47:29] "GET /stats/ports HTTP/1.1" 200 5695 0.000245
+(69633) accepted ('127.0.0.1', 40926)
+127.0.0.1 - - [30/Oct/2026 14:47:33] "GET /stats/ports HTTP/1.1" 200 5702 0.000172
+(69633) accepted ('127.0.0.1', 56698)
+127.0.0.1 - - [30/Oct/2026 14:47:40] "GET /stats/ports HTTP/1.1" 200 5697 0.000174
+(69633) accepted ('127.0.0.1', 56708)
+127.0.0.1 - - [30/Oct/2026 14:47:43] "GET /stats/ports HTTP/1.1" 200 5698 0.000234
+(69633) accepted ('127.0.0.1', 34008)
+127.0.0.1 - - [30/Oct/2026 14:47:50] "GET /stats/ports HTTP/1.1" 200 5700 0.000197
+(69633) accepted ('127.0.0.1', 34022)
+127.0.0.1 - - [30/Oct/2026 14:47:54] "GET /stats/ports HTTP/1.1" 200 5707 0.000165
+(69633) accepted ('127.0.0.1', 54480)
+127.0.0.1 - - [30/Oct/2026 14:48:01] "GET /stats/ports HTTP/1.1" 200 5700 0.000163
+(69633) accepted ('127.0.0.1', 54494)
+127.0.0.1 - - [30/Oct/2026 14:48:04] "GET /stats/ports HTTP/1.1" 200 5704 0.000195
+(69633) accepted ('127.0.0.1', 43552)
+127.0.0.1 - - [30/Oct/2026 14:48:11] "GET /stats/ports HTTP/1.1" 200 5696 0.000167
+(69633) accepted ('127.0.0.1', 51118)
+127.0.0.1 - - [30/Oct/2026 14:48:15] "GET /stats/ports HTTP/1.1" 200 5706 0.000163
+(69633) accepted ('127.0.0.1', 51130)
+127.0.0.1 - - [30/Oct/2026 14:48:22] "GET /stats/ports HTTP/1.1" 200 5702 0.000165
+(69633) accepted ('127.0.0.1', 57778)
+127.0.0.1 - - [30/Oct/2026 14:48:25] "GET /stats/ports HTTP/1.1" 200 5708 0.000192
+(69633) accepted ('127.0.0.1', 57792)
+127.0.0.1 - - [30/Oct/2026 14:48:32] "GET /stats/ports HTTP/1.1" 200 5736 0.000206
+(69633) accepted ('127.0.0.1', 35146)
+127.0.0.1 - - [30/Oct/2026 14:48:36] "GET /stats/ports HTTP/1.1" 200 5732 0.000208
+(69633) accepted ('127.0.0.1', 35160)
+127.0.0.1 - - [30/Oct/2026 14:48:43] "GET /stats/ports HTTP/1.1" 200 5746 0.000185
+(69633) accepted ('127.0.0.1', 35656)
+127.0.0.1 - - [30/Oct/2026 14:48:46] "GET /stats/ports HTTP/1.1" 200 5752 0.000203
+(69633) accepted ('127.0.0.1', 35658)
+127.0.0.1 - - [30/Oct/2026 14:48:53] "GET /stats/ports HTTP/1.1" 200 5762 0.000227
+(69633) accepted ('127.0.0.1', 55568)
+127.0.0.1 - - [30/Oct/2026 14:48:57] "GET /stats/ports HTTP/1.1" 200 5746 0.000169
+(69633) accepted ('127.0.0.1', 55576)
+127.0.0.1 - - [30/Oct/2026 14:49:04] "GET /stats/ports HTTP/1.1" 200 5760 0.000170
+(69633) accepted ('127.0.0.1', 34986)
+127.0.0.1 - - [30/Oct/2026 14:49:07] "GET /stats/ports HTTP/1.1" 200 5755 0.000187
+(69633) accepted ('127.0.0.1', 34998)
+127.0.0.1 - - [30/Oct/2026 14:49:14] "GET /stats/ports HTTP/1.1" 200 5759 0.000196
+(69633) accepted ('127.0.0.1', 33646)
+127.0.0.1 - - [30/Oct/2026 14:49:18] "GET /stats/ports HTTP/1.1" 200 5761 0.000166
+(69633) accepted ('127.0.0.1', 40220)
+127.0.0.1 - - [30/Oct/2026 14:49:25] "GET /stats/ports HTTP/1.1" 200 5756 0.000298
+(69633) accepted ('127.0.0.1', 40234)
+127.0.0.1 - - [30/Oct/2026 14:49:28] "GET /stats/ports HTTP/1.1" 200 5758 0.000167
+(69633) accepted ('127.0.0.1', 52200)
+127.0.0.1 - - [30/Oct/2026 14:49:35] "GET /stats/ports HTTP/1.1" 200 5758 0.000172
+(69633) accepted ('127.0.0.1', 52204)
+127.0.0.1 - - [30/Oct/2026 14:49:39] "GET /stats/ports HTTP/1.1" 200 5771 0.000338
+(69633) accepted ('127.0.0.1', 42824)
+127.0.0.1 - - [30/Oct/2026 14:49:46] "GET /stats/ports HTTP/1.1" 200 5766 0.000244
+(69633) accepted ('127.0.0.1', 42836)
+127.0.0.1 - - [30/Oct/2026 14:49:49] "GET /stats/ports HTTP/1.1" 200 5771 0.000164
+(69633) accepted ('127.0.0.1', 40174)
+127.0.0.1 - - [30/Oct/2026 14:49:56] "GET /stats/ports HTTP/1.1" 200 5800 0.000169
+(69633) accepted ('127.0.0.1', 40188)
+127.0.0.1 - - [30/Oct/2026 14:50:00] "GET /stats/ports HTTP/1.1" 200 5800 0.000183
+(69633) accepted ('127.0.0.1', 35632)
+127.0.0.1 - - [30/Oct/2026 14:50:07] "GET /stats/ports HTTP/1.1" 200 5792 0.000209
+(69633) accepted ('127.0.0.1', 35640)
+127.0.0.1 - - [30/Oct/2026 14:50:10] "GET /stats/ports HTTP/1.1" 200 5781 0.000169
+(69633) accepted ('127.0.0.1', 33886)
+127.0.0.1 - - [30/Oct/2026 14:50:17] "GET /stats/ports HTTP/1.1" 200 5796 0.000206
+(69633) accepted ('127.0.0.1', 33900)
+127.0.0.1 - - [30/Oct/2026 14:50:21] "GET /stats/ports HTTP/1.1" 200 5792 0.000201
+(69633) accepted ('127.0.0.1', 44528)
+127.0.0.1 - - [30/Oct/2026 14:50:28] "GET /stats/ports HTTP/1.1" 200 5797 0.000212
+switch disconnected: dpid=201
+switch disconnected: dpid=203
+switch disconnected: dpid=102
+switch disconnected: dpid=101
+switch disconnected: dpid=202
+switch disconnected: dpid=204

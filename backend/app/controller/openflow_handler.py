@@ -1,39 +1,54 @@
-"""Ryu OpenFlow 1.3 controller application.
+"""OpenFlow 1.3 controller application (L2 learning, topology discovery, path installation).
 
-Run this with:
-    ryu-manager openflow_handler.py --observe-links --wsapi-port 8081
+Runs under os-ken, the maintained Ryu fork, or under Ryu (from backend/, so that `app` imports):
+    PYTHONPATH=. osken-manager app/controller/openflow_handler.py --observe-links
+    PYTHONPATH=. ryu-manager app/controller/openflow_handler.py --observe-links
+
+It is not imported by the backend. The emulation uses its own app (emulation/controller_app.py),
+which installs paths the same way (app.controller.flow_rules) but does no L2 learning: flooding
+would loop in a spine-leaf topology.
 """
 from __future__ import annotations
 
 import logging
 from collections import defaultdict
 
-from ryu.app import simple_switch_13
-from ryu.base import app_manager
-from ryu.controller import ofp_event
-from ryu.controller.handler import CONFIG_DISPATCHER, MAIN_DISPATCHER, set_ev_cls
-from ryu.lib.packet import ether_types, ethernet, packet
-from ryu.ofproto import ofproto_v1_3
-from ryu.topology import event as topo_event
-from ryu.topology.api import get_all_host, get_all_link, get_all_switch
+from app.controller import flow_rules
+
+try:  # os-ken
+    from os_ken.base import app_manager
+    from os_ken.controller import ofp_event
+    from os_ken.controller.handler import CONFIG_DISPATCHER, MAIN_DISPATCHER, set_ev_cls
+    from os_ken.lib.packet import ether_types, ethernet, packet
+    from os_ken.ofproto import ofproto_v1_3
+    from os_ken.topology import event as topo_event
+    from os_ken.topology.api import get_all_host, get_all_link, get_all_switch
+
+    BaseApp = app_manager.OSKenApp
+except ImportError:  # Ryu, same API
+    from ryu.base import app_manager
+    from ryu.controller import ofp_event
+    from ryu.controller.handler import CONFIG_DISPATCHER, MAIN_DISPATCHER, set_ev_cls
+    from ryu.lib.packet import ether_types, ethernet, packet
+    from ryu.ofproto import ofproto_v1_3
+    from ryu.topology import event as topo_event
+    from ryu.topology.api import get_all_host, get_all_link, get_all_switch
+
+    BaseApp = app_manager.RyuApp
 
 logger = logging.getLogger(__name__)
 
 
-class SDNController(app_manager.RyuApp):
+class SDNController(BaseApp):
     """
     OpenFlow 1.3 SDN controller with:
     - MAC learning and L2 forwarding
     - Topology discovery via LLDP
     - Port statistics collection
-    - REST API integration via Ryu's built-in wsgi
+    - Path installation (install_path)
     """
 
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
-
-    _CONTEXTS = {
-        "wsgi": simple_switch_13.SimpleSwitch13,
-    }
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -152,16 +167,17 @@ class SDNController(app_manager.RyuApp):
         )
 
     def install_path(
-        self, path: list[tuple[int, int]], src_mac: str, dst_mac: str, priority: int = 10
+        self, hops: list[flow_rules.Hop], src_ip: str, dst_ip: str, flow_id: int = 0
     ) -> None:
-        """Install a forwarding path across multiple switches."""
-        for dpid, out_port in path:
-            if dpid not in self.datapaths:
-                logger.error("Switch dpid=%d not connected", dpid)
-                continue
-            datapath = self.datapaths[dpid]
-            parser = datapath.ofproto_parser
+        """Install a path for src_ip -> dst_ip: permanent IPv4 rules, egress switch first.
 
-            match = parser.OFPMatch(eth_src=src_mac, eth_dst=dst_mac)
-            actions = [parser.OFPActionOutput(out_port)]
-            self._add_flow(datapath, priority, match, actions, idle_timeout=300)
+        hops: (dpid, out_port) per switch in path order (flow_rules.path_hops builds them).
+        """
+        rules = flow_rules.path_rules(
+            hops, flow_rules.ipv4_match(src_ip, dst_ip), flow_rules.flow_cookie(flow_id)
+        )
+        missing = [r.dpid for r in rules if r.dpid not in self.datapaths]
+        if missing:
+            raise KeyError(f"switches not connected: {missing}")
+        for rule in rules:
+            self.datapaths[rule.dpid].send_msg(flow_rules.to_flowmod(self.datapaths[rule.dpid], rule))

@@ -1,0 +1,116 @@
+{
+  "switches": [
+    101,
+    102,
+    201,
+    202,
+    203,
+    204
+  ],
+  "links": [
+    {
+      "src_dpid": 101,
+      "src_port": 1,
+      "dst_dpid": 201,
+      "dst_port": 1
+    },
+    {
+      "src_dpid": 101,
+      "src_port": 2,
+      "dst_dpid": 202,
+      "dst_port": 1
+    },
+    {
+      "src_dpid": 101,
+      "src_port": 3,
+      "dst_dpid": 203,
+      "dst_port": 1
+    },
+    {
+      "src_dpid": 101,
+      "src_port": 4,
+      "dst_dpid": 204,
+      "dst_port": 1
+    },
+    {
+      "src_dpid": 102,
+      "src_port": 1,
+      "dst_dpid": 201,
+      "dst_port": 2
+    },
+    {
+      "src_dpid": 102,
+      "src_port": 2,
+      "dst_dpid": 202,
+      "dst_port": 2
+    },
+    {
+      "src_dpid": 102,
+      "src_port": 3,
+      "dst_dpid": 203,
+      "dst_port": 2
+    },
+    {
+      "src_dpid": 102,
+      "src_port": 4,
+      "dst_dpid": 204,
+      "dst_port": 2
+    },
+    {
+      "src_dpid": 201,
+      "src_port": 1,
+      "dst_dpid": 101,
+      "dst_port": 1
+    },
+    {
+      "src_dpid": 201,
+      "src_port": 2,
+      "dst_dpid": 102,
+      "dst_port": 1
+    },
+    {
+      "src_dpid": 202,
+      "src_port": 1,
+      "dst_dpid": 101,
+      "dst_port": 2
+    },
+    {
+      "src_dpid": 202,
+      "src_port": 2,
+      "dst_dpid": 102,
+      "dst_port": 2
+    },
+    {
+      "src_dpid": 203,
+      "src_port": 1,
+      "dst_dpid": 101,
+      "dst_port": 3
+    },
+    {
+      "src_dpid": 203,
+      "src_port": 2,
+      "dst_dpid": 102,
+      "dst_port": 3
+    },
+    {
+      "src_dpid": 204,
+      "src_port": 1,
+      "dst_dpid": 101,
+      "dst_port": 4
+    },
+    {
+      "src_dpid": 204,
+      "src_port": 2,
+      "dst_dpid": 102,
+      "dst_port": 4
+    }
+  ],
+  "connected": [
+    101,
+    102,
+    201,
+    202,
+    203,
+    204
+  ]
+}

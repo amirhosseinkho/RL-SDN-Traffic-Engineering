@@ -1,0 +1,24 @@
+graph nodes: ['s0000000000000065', 's0000000000000066', 's00000000000000c9', 's00000000000000ca', 's00000000000000cb', 's00000000000000cc']
+graph edges: 16
+host-to-host path from TopologyManager: None
+switch path leaf1->leaf3: ['s00000000000000c9', 's0000000000000065', 's00000000000000cb']
+ERROR: HTTPStatusError Client error '404 Not Found' for url 'http://127.0.0.1:8080/stats/flowentry/add'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+--- leaf1
+OFPST_FLOW reply (OF1.3) (xid=0x2):
+
+--- spine1
+OFPST_FLOW reply (OF1.3) (xid=0x2):
+
+--- spine2
+OFPST_FLOW reply (OF1.3) (xid=0x2):
+
+--- leaf3
+OFPST_FLOW reply (OF1.3) (xid=0x2):
+
+PING 192.168.3.6 (192.168.3.6) 56(84) bytes of data.
+
+--- 192.168.3.6 ping statistics ---
+3 packets transmitted, 0 received, 100% packet loss, time 2038ms
+
+
